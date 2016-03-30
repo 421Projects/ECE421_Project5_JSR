@@ -7,6 +7,8 @@ class LocalPlayer < Player
     include Contracts::Builtin
     include Contracts::Invariants
 
-    def send_move
+    Contract Nat => nil
+    def send_move(column)
+        nil
     end
 end

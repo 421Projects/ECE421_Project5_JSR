@@ -7,6 +7,8 @@ class RemotePlayer < Player
     include Contracts::Builtin
     include Contracts::Invariants
 
+    Contract None => Nat
     def get_move
+        1
     end
 end
