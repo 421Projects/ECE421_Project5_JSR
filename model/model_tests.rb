@@ -533,4 +533,59 @@ class Connect4ModelTest < Test::Unit::TestCase
         end
     end
 
+    def test_basic_remote_play
+        game = Connect4.new()
+
+        hg = HostGame.new(game, 8080)
+        hg.start_server
+
+        p1 = RemoteAIPlayer.new(hg, game.p1_piece, game.p1_patterns, game.p2_piece, game.p2_patterns, 1)
+
+        b = Board.new(game.board_width, game.board_height)
+        assert_equal(b.piece_count, 0)
+
+        p1.play(b)
+        assert_equal(b.piece_count, 1)
+
+        p1.play(b)
+        assert_equal(b.piece_count, 2)
+
+        p1.play(b)
+        assert_equal(b.piece_count, 3)
+
+        p1.play(b)
+        assert_equal(b.piece_count, 4)
+
+        assert_equal(b.analyze(p1.pattern_array), true,
+                     "Didn't detect win.")
+    end
+
+    def test_basic_remote_play2
+        game = Connect4.new()
+
+        hg = HostGame.new(game, 8080)
+        hg.start_server
+
+        p1 = RemoteAIPlayer.new(hg, game.p1_piece, game.p1_patterns, game.p2_piece, game.p2_patterns, 1)
+
+        b = Board.new(game.board_width, game.board_height)
+        assert_equal(b.piece_count, 0)
+
+        p1.play(b)
+        assert_equal(b.piece_count, 1)
+
+        assert_equal(b.analyze(p1.pattern_array), false,
+                     "Detected wrongful win.")
+
+        hg.close_server
+
+        assert_raise do
+            # server is closed
+            p1.play(b)
+        end
+
+        assert_equal(b.piece_count, 1)
+    end
+
+
 end
