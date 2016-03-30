@@ -1,6 +1,6 @@
 require "test/unit"
 require_relative "player/player"
-require_relative "player/ai_player"
+require_relative "player/localPlayer/local_ai_player"
 require_relative "board"
 require_relative "game/game"
 require_relative "game/connect4"
@@ -405,7 +405,7 @@ class Connect4ModelTest < Test::Unit::TestCase
         pattern[[0, 2]] = game.p1_piece
         pattern[[0, 3]] = game.p1_piece
 
-        p1 = AIPlayer.new(game.p1_piece, game.p1_patterns, game.p2_piece, game.p2_patterns)
+        p1 = LocalAIPlayer.new(game.p1_piece, game.p1_patterns, game.p2_piece, game.p2_patterns)
 
         b.set_piece(3, game.p1_piece)
         assert_equal(4, p1.score_of_pattern(pattern, b))
@@ -419,7 +419,7 @@ class Connect4ModelTest < Test::Unit::TestCase
 
         b = Board.new(game.board_width, game.board_height)
 
-        p1 = AIPlayer.new(game.p1_piece, game.p1_patterns, game.p2_piece, game.p2_patterns)
+        p1 = LocalAIPlayer.new(game.p1_piece, game.p1_patterns, game.p2_piece, game.p2_patterns)
 
         b.set_piece(0, game.p1_piece)
         assert_equal(3, p1.score_of_board(b, game.p1_patterns))
@@ -452,7 +452,7 @@ class Connect4ModelTest < Test::Unit::TestCase
 
         b = Board.new(game.board_width, game.board_height)
 
-        p1 = AIPlayer.new(game.p1_piece, game.p1_patterns, game.p2_piece, game.p2_patterns)
+        p1 = LocalAIPlayer.new(game.p1_piece, game.p1_patterns, game.p2_piece, game.p2_patterns)
 
         pattern1 = {}
         pattern1[[0, 0]] = game.p1_piece
@@ -488,7 +488,7 @@ class Connect4ModelTest < Test::Unit::TestCase
 
         game = Connect4.new()
 
-        p1 = AIPlayer.new(game.p1_piece, game.p1_patterns, game.p2_piece, game.p2_patterns, 1)
+        p1 = LocalAIPlayer.new(game.p1_piece, game.p1_patterns, game.p2_piece, game.p2_patterns, 1)
 
         b = Board.new(game.board_width, game.board_height)
         assert_equal(b.piece_count, 0)
@@ -513,8 +513,8 @@ class Connect4ModelTest < Test::Unit::TestCase
     def test_ai_tough_play
         game = Connect4.new()
 
-        p1 = AIPlayer.new(game.p1_piece, game.p1_patterns, game.p2_piece, game.p2_patterns, 3)
-        p2 = AIPlayer.new(game.p2_piece, game.p2_patterns, game.p1_piece, game.p1_patterns, 3)
+        p1 = LocalAIPlayer.new(game.p1_piece, game.p1_patterns, game.p2_piece, game.p2_patterns, 3)
+        p2 = LocalAIPlayer.new(game.p2_piece, game.p2_patterns, game.p1_piece, game.p1_patterns, 3)
 
         b = Board.new(game.board_width, game.board_height)
         b.set_piece(3, game.p2_piece)

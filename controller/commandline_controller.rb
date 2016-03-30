@@ -1,6 +1,8 @@
 require_relative "../model/board"
-require_relative "../model/player/ai_player"
-require_relative "../model/player/real_player"
+require_relative "../model/player/localPlayer/local_ai_player"
+require_relative "../model/player/remotePlayer/remote_ai_player"
+require_relative "../model/player/localPlayer/local_real_player"
+require_relative "../model/player/remotePlayer/remote_real_player"
 require_relative "../model/game/game"
 require 'contracts'
 require 'observer'
@@ -53,12 +55,12 @@ class CMDController
 
     Contract None => Bool
     def self.human_player_playing?
-        return @player_playing.is_a? RealPlayer
+        return @player_playing.is_a? LocalRealPlayer
     end
 
     Contract None => Bool
     def self.ai_player_playing?
-        return @player_playing.is_a? AIPlayer
+        return @player_playing.is_a? LocalAIPlayer
     end
 
     Contract None => Bool
@@ -94,7 +96,7 @@ class CMDController
             for i in 0..(@AI_players-1)
                 if @players.size < @game.num_of_players and
                    @players.size <= 2
-                    ai = AIPlayer.new(names[i], patterns[i],
+                    ai = LocalAIPlayer.new(names[i], patterns[i],
                                       names[i+1] || names[0], patterns[i+1] || patterns[0])
                     @player_playing = ai
                     for obj in @observer_views
@@ -105,7 +107,7 @@ class CMDController
             end
 
             while @players.size < @game.num_of_players #2 # number of players
-                re = RealPlayer.new(names.pop, patterns.pop)
+                re = LocalRealPlayer.new(names.pop, patterns.pop)
                 for obj in @observer_views
                     re.add_observer(obj)
                 end
@@ -131,7 +133,7 @@ class CMDController
         if arg == nil
             return arg
         end
-        if @player_playing.is_a? AIPlayer
+        if @player_playing.is_a? LocalAIPlayer
             @player_playing.play(@board)
         else
             @board.set_piece(arg, @player_playing.piece)
@@ -145,7 +147,7 @@ class CMDController
             if @player_playing == nil
                 @player_playing = @players[0]
             end
-            # if @player_playing.is_a? AIPlayer
+            # if @player_playing.is_a? LocalAIPlayer
             #     self.take_turn(0)
             # end
         end
