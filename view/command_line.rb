@@ -22,6 +22,7 @@ class CommandLineView
 
         while (@running)
             if CMDController.game_started?
+                puts "running"
                 if CMDController.human_player_playing?
                     puts "#{eval('CMDController.get_player_playings_name')} Next Piece?> "
                     parse_command(get_command())
@@ -29,7 +30,15 @@ class CommandLineView
                     t = Thread.new {
                         CMDController.handle_event(["ai_move"])
                     }
-                    print "#{CMDController.get_player_playings_name} Thinking"
+                    print "AI #{CMDController.get_player_playings_name} Thinking"
+                    print "." until t.join(0.25)
+                    STDOUT.flush
+                elsif CMDController.remote_player_playing?
+                    puts "remote move"
+                    t = Thread.new {
+                        CMDController.handle_event(["remote_move"])
+                    }
+                    print "Remote Player #{CMDController.get_player_playings_name} Thinking"
                     print "." until t.join(0.25)
                     STDOUT.flush
                 end
@@ -48,7 +57,7 @@ class CommandLineView
         return gets.chomp.split
     end
 
-    Contract Or[Player, Board, Game] => nil
+    #Contract Or[Player, Board, Game] => nil
     def update(arg)
         if arg.is_a? Player
             puts "#{arg.to_s} has won!"
@@ -84,20 +93,20 @@ class CommandLineView
                 puts "how many AIs? (maximum of 2 supported)"
                 user_input << gets.chomp
             end
-            begin
-                CMDController.handle_event(user_input)
-            rescue StandardError => se
-                puts se.message
-                puts "Do you want try again? (y/n)"
-                response = gets.chomp.split
-                if response[0].downcase.include? "y"
-                    puts "Trying again..."
-                    return
-                else
-                    puts "Quiting..."
-                    @running = false
-                end
-            end
+            #            begin
+            CMDController.handle_event(user_input)
+            #            rescue StandardError => se
+            #                 puts se.message
+            #                 puts "Do you want try again? (y/n)"
+            #                 response = gets.chomp.split
+            #                 if response[0].downcase.include? "y"
+            #                     puts "Trying again..."
+            #                     return
+            #                 else
+            #                     puts "Quiting..."
+            #                     @running = false
+            #                 end
+            #             end
         end
         nil
     end
