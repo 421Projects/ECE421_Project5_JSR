@@ -26,7 +26,8 @@ class Board
         @original_height = height
 		@width = width
 		@height = height
-		@board = Hash.new("*")
+		#@board = Hash.new("*")
+        @board = Hash.new
         @piece_count = 0
 	end
 
@@ -92,7 +93,7 @@ class Board
         raise OutOfBounds unless column <= @width
 
         row = 0
-        while @board[[row,column]] != "*"
+        while @board[[row,column]] != nil
             row += 1
         end
         if row >= @height

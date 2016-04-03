@@ -41,6 +41,10 @@ class CommandLineView
                     print "Remote Player #{CMDController.get_player_playings_name} Thinking"
                     print "." until t.join(0.25)
                     STDOUT.flush
+                else
+                    puts "We got nothing! #{CMDController.player_playing}"
+                    puts "We got nothing! #{CMDController.players}"
+                    sleep(1)
                 end
             else
                 puts "Prompt> "
@@ -59,6 +63,7 @@ class CommandLineView
 
     #Contract Or[Player, Board, Game] => nil
     def update(arg)
+        puts "called"
         if arg.is_a? Player
             puts "#{arg.to_s} has won!"
             #eval("CMDController.handle_event(['reset'])")
@@ -94,7 +99,16 @@ class CommandLineView
                 user_input << gets.chomp
             end
             #            begin
-            CMDController.handle_event(user_input)
+            if (user_input[0].downcase.include? "join")
+                t = Thread.new {
+                    CMDController.handle_event(user_input)
+                }
+                print "Waiting for game to start"
+                print "." until t.join(0.25)
+                STDOUT.flush
+            else
+                CMDController.handle_event(user_input)
+            end
             #            rescue StandardError => se
             #                 puts se.message
             #                 puts "Do you want try again? (y/n)"

@@ -1,5 +1,6 @@
 require 'contracts'
 require 'observer'
+require 'yaml'
 require "xmlrpc/server"
 require "xmlrpc/client"
 require_relative 'player/player'
@@ -19,7 +20,7 @@ class HostGame
     invariant(@port) {@port > 1024 && @port < 65535}
 
     #Contract Game, Nat => nil
-    def initialize(game="Connect4", port=8080)
+    def initialize(game, port=8080)
         @game = game
         @port = port
         @server_handle = nil
@@ -29,33 +30,21 @@ class HostGame
         nil
     end
 
-    def update(arg)
-        # send to client
-        if arg.is_a? Integer and
-          arg >= 0 and
-          arg <= @game.board_width
-            @move_to_send = arg
-        else
-            puts "Notification not approriate: #{arg}"
-        end
-    end
-
     def hosting?
         return @server_handle.is_a? XMLRPC::Server
     end
 
     def send_move(move)
-        @move_to_send = move
+        CMDController.game_history[CMDController.turn] = move
+        #@move_to_send = move
     end
 
     def get_move()
-        while @move_received == -1
-            puts "host waiting for client to move"
+        while CMDController.game_history[CMDController.turn] == -1
+            puts "host waiting for client to move for #{CMDController.turn}"
             sleep(1)
         end
-        move = @move_received
-        @move_received = -1
-        move
+        CMDController.game_history[CMDController.turn]
     end
 
 
@@ -66,33 +55,41 @@ class HostGame
 
         @server_handle = XMLRPC::Server.new(@port)
 
-        @server_handle.add_handler("send_column_played") do |column_num|
-            @move_received = column_num
+        @server_handle.add_handler("send_column_played") do |column_num, turn|
+            # puts "got move for #{CMDController.turn}"
+            CMDController.game_history[turn] = column_num
+            #@move_received = column_num
             true
         end
 
-        @server_handle.add_handler("get_column_played") do ||
-                                                           while @move_to_send == -1
-                                                               puts "client waiting for host to move"
-                                                               sleep(1)
-                                                           end
-            move = @move_to_send
-            @move_to_send = -1
-            puts "sending our move to client: #{move}"
-            move
-        end
-
-        @server_handle.add_handler("join_game") do |player_name|
-            if CMDController.get_number_of_players_playing < 2 #@game.num_of_players
-                CMDController.add_remote_player(player_name)
+        @server_handle.add_handler("get_column_played") do |turn|
+            while CMDController.game_history[turn] == -1
+                puts "client waiting for host to move #{turn}"
+                sleep(1)
             end
-            true
+            CMDController.game_history[turn]
         end
 
-        @server_handle.add_handler("get_players") do |arg|
-            puts "sending"
-            #            Marshal.dump(CMDController.get_player_names)
-            CMDController.get_player_names
+        @server_handle.add_handler("join_game") do
+            CMDController.player_id = CMDController.player_id + 1
+            this_players_id = CMDController.player_id
+            if CMDController.get_number_of_players_playing < @game.num_of_players
+                CMDController.add_remote_player()
+            end
+            while CMDController.get_number_of_players_playing < @game.num_of_players or
+                 CMDController.players.include?(CMDController.player_playing) == false
+                sleep(1)
+            end
+
+            puts "My player id is #{this_players_id}"
+            #Marshal.dump([
+            YAML::dump([
+                           CMDController.game,
+                           CMDController.game_started,
+                           CMDController.clients_players[this_players_id],
+                           CMDController.clients_player_playing_index,
+                           CMDController.clients_board
+                       ])
         end
 
         @server_handle.set_default_handler do |name, *args|
@@ -109,11 +106,9 @@ class HostGame
         # http://ruby-doc.org/stdlib-2.0.0/libdoc/xmlrpc/rdoc/XMLRPC/Server.html
         # add handler for receiving piece placements from connected clients
         @server_handle = XMLRPC::Client.new("127.0.0.1", "/RPC2", @port)
-        @server_handle.call("join_game", "funkyMan")
-        puts "calling"
-        lis = @server_handle.call("get_players", "!")
-        puts lis
-        return lis
+        game_attributes = @server_handle.call("join_game")
+        return YAML::load(game_attributes)
+        # return game_attributes
     end
 
     def send_and_get_move(my_move)
@@ -123,7 +118,7 @@ class HostGame
 
     Contract None => nil
     def close_server()
-        if (@server_handle != nil)
+        if (@server_handle != nil and @server_handle.respond_to? :shutdown)
             @server_handle.shutdown
         end
         if (@server_thread != nil)

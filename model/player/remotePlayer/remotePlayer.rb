@@ -14,7 +14,7 @@ class RemotePlayer < Player
         if CMDController.hosting?
             return CMDController.get_server.get_move
         else
-            return CMDController.get_server.server_handle.call("get_column_played")
+            return CMDController.get_server.server_handle.call("get_column_played", CMDController.turn)
         end
     end
 
@@ -22,18 +22,9 @@ class RemotePlayer < Player
         if CMDController.hosting?
             CMDController.get_server.send_move(column_num)
         else
-            CMDController.get_server.server_handle.call("send_column_played", column_num)
+            puts "Gone where you didnt think!!!"
+            CMDController.get_server.server_handle.call("send_column_played", column_num, CMDController.turn)
         end
         true
-    end
-
-    def update(arg)
-        if arg.is_a? Integer and
-          arg >= 0 and
-          arg <= @game.board_width
-            @move_made = arg
-        else
-            puts "Notification not approriate: #{arg}"
-        end
     end
 end

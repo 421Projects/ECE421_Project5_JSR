@@ -23,12 +23,9 @@ class CMDController
     class AICountError < StandardError
     end
 
+
     Contract ArrayOf[Object] => Any
     def self.initialize(observer_views)
-        trap("SIGINT") {
-            puts "dipping"
-            exit!
-        }
         original_dir = Dir.pwd
         Dir.chdir(__dir__)
 
@@ -44,10 +41,18 @@ class CMDController
         @game_started = false
         @observer_views = observer_views.to_a
         @players = []
+        @clients_players = Hash.new
         @board = nil
+        @clients_board = nil
         @player_playing = nil
+        @clients_player_playing_index = nil
         @AI_players = 0
         @previous_play = -1
+        # http://docs.ruby-lang.org/en/2.0.0/Hash.html
+        @game_history = Hash.new(-1)
+        @turn = 1
+        @online_mode = false
+        @player_id = 1 # starting with host player
     end
 
     Contract None => ArrayOf[Class]
@@ -57,6 +62,50 @@ class CMDController
 
     def self.get_number_of_players_playing
         @players.size
+    end
+
+    def self.game
+        @game
+    end
+
+    def self.game_started
+        @game_started
+    end
+
+    def self.players
+        @players
+    end
+
+    def self.clients_players
+        @clients_players
+    end
+
+    def self.player_playing
+        @player_playing
+    end
+
+    def self.clients_player_playing_index
+        @clients_player_playing_index
+    end
+
+    def self.board
+        @board
+    end
+
+    def self.clients_board
+        @clients_board
+    end
+
+    def self.game_history
+        @game_history
+    end
+
+    def self.turn
+        @turn
+    end
+
+    def self.online_mode
+        @online_mode
     end
 
     Contract None => String
@@ -103,19 +152,35 @@ class CMDController
         return @server
     end
 
-    def self.add_remote_player(player_name)
-        puts "adding plye #{player_name}"
-        re = RemoteRealPlayer.new(@names.pop + player_name, @patterns.pop)
+    def self.player_id
+        return @player_id
+    end
+    def self.player_id=(arg)
+        @player_id = arg
+    end
+
+    def self.add_remote_player()
+        player_name = @names.pop
+        player_pattern = @patterns.pop
+        puts "adding player #{player_name}"
+        re = RemoteRealPlayer.new(player_name, player_pattern)
         for obj in @observer_views
             re.add_observer(obj)
         end
-        re.add_observer(@server)
-        @server.add_observer(re)
         @players.push(re)
-        puts "done adding"
+
+        for i in 2..@game.num_of_players
+            if player_id == i
+                re = LocalRealPlayer.new(player_name, player_pattern)
+                @clients_players[i].push(re)
+            else
+                re = RemoteRealPlayer.new(player_name, player_pattern)
+                @clients_players[i].push(re)
+            end
+        end
     end
 
-    def self.create_hosted_game(game, host=true) # No AIs, atm
+    def self.create_hosted_game(game) # No AIs, atm
         c = self.new
         for obj in @observer_views
             c.add_observer(obj)
@@ -127,19 +192,16 @@ class CMDController
         end
         if gameClazz.superclass == Game
             @game = gameClazz.new()
+            for i in 2..@game.num_of_players
+                @clients_players[i] = []
+            end
             @game_started = true
             #patterns = [@game.p1_patterns, @game.p2_patterns]
             #names = [@game.p1_piece, @game.p2_piece]
             @patterns = @game.patterns
             @names = @game.pieces
             @server = HostGame.new(@game)
-            if (host)
-                puts "hosting game"
-                @server.start_server()
-            else
-                puts "joining game"
-                players_to_add = @server.join_server()
-            end
+            @server.start_server()
             # for i in 0..(@AI_players-1)
             #     if @players.size < @game.num_of_players and
             #        @players.size <= 2
@@ -152,39 +214,42 @@ class CMDController
             #         @players.push(ai)
             #     end
             # end
-            re = LocalRealPlayer.new(@names.pop, @patterns.pop)
+
+            player_name = @names.pop
+            player_pattern = @patterns.pop
+            re = LocalRealPlayer.new(player_name, player_pattern)
             for obj in @observer_views
                 re.add_observer(obj)
             end
+            #re.add_observer(@server)
+            #@server.add_observer(re)
             @players.push(re)
 
-            if self.hosting?
-                while @players.size < @game.num_of_players #2 # number of players
-                    puts "waiting..."
-                    sleep(1)
-                end
-                puts "got players"
-            else
-                puts "not hosting"
-                puts players_to_add
-                while @players.size < @game.num_of_players #2 # number of players
-                    puts "adding plye"
-                    re = RemoteRealPlayer.new(@names.pop + players_to_add.pop, @patterns.pop)
-                    @players.push(re)
-                end
+            re = RemoteRealPlayer.new(player_name, player_pattern)
+            for i in 2..@game.num_of_players
+                @clients_players[i].push(re)
             end
+            #@clients_players.push(re)
+
+            while @players.size < @game.num_of_players #2 # number of players
+                # puts "waiting... for players"
+                sleep(1)
+            end
+            # puts "got players"
 
             @board = Board.new(@game.board_width, @game.board_height)
+            @clients_board = Board.new(@game.board_width, @game.board_height)
             for obj in @observer_views
                 @board.add_observer(obj)
             end
 
-            if @player_playing == nil and self.hosting?
-                #@player_playing = @players.shuffle[0]
-                @player_playing = @players[0]
-            else
-                @player_playing = @players[1]
-            end
+            # http://stackoverflow.com/questions/4395095/how-to-generate-a-random-number-between-a-and-b-in-ruby
+            first_players_index = rand(0..(@players.size-1))
+            @player_playing = @players[first_players_index]
+            @clients_player_playing_index = first_players_index
+            puts "(HOST) My players are #{@players}"
+            puts "(HOST) size #{@players.size}"
+            puts "(HOST) My player playing is #{@player_playing}"
         else
             raise StandardError, "#{gameClazz} not a Game."
         end
@@ -262,7 +327,13 @@ class CMDController
             @player_playing.play(@board, @previous_play)
         else
             @board.set_piece(arg, @player_playing.piece)
-            @server.send_move(arg)
+            if @online_mode
+                if self.hosting?
+                    @server.send_move(arg)
+                else
+                    CMDController.get_server.server_handle.call("send_column_played", arg, @turn)
+                end
+            end
             @previous_play = arg
         end
 
@@ -270,13 +341,14 @@ class CMDController
             # game over, no need to switch turns
             @player_playing.set_win_status(true)
         else # switch turns
+            @turn = @turn + 1
             @player_playing = @players[@players.index(@player_playing)+1]
             if @player_playing == nil
                 @player_playing = @players[0]
             end
-            if @player_playing.is_a? RemoteRealPlayer
-                @player_playing.send_move(arg)
-            end
+            # if @player_playing.is_a? RemoteRealPlayer
+            #     @player_playing.send_move(arg)
+            # end
         end
         nil
     end
@@ -311,11 +383,12 @@ class CMDController
                     end
                     if gameClazz.superclass == Game
                         self.create_game(commands[1], ai_count)
+                        online_mode = false
                     else
                         raise ModeNotSupported,"#{commands[1]} mode not supported."
                     end
                 elsif commands[0].downcase.include? "host"
-                    commands[1] = "Connect4"
+                    # commands[1] = "Connect4"
                     begin
                         gameClazz = Object.const_get(commands[1]) # Game
                     rescue NameError => ne
@@ -323,29 +396,49 @@ class CMDController
                     end
                     if gameClazz.superclass == Game
                         self.create_hosted_game(commands[1])
+                        @online_mode = true
                     else
                         raise ModeNotSupported,"#{commands[1]} mode not supported."
                     end
                 elsif commands[0].downcase.include? "join"
-                    commands[1] = "Connect4"
+                    # commands[1] = "Connect4"
                     url = commands[2]
                     port = Integer(commands[3]) rescue nil
                     begin
                         gameClazz = Object.const_get(commands[1]) # Game
-                    rescue NameError => ne
-                        raise ne, "#{commands[1]} mode not found."
+                    rescue StandardError
+                        raise ModeNotSupported
                     end
                     if gameClazz.superclass == Game
-                        self.create_hosted_game(commands[1], host=false)
+                        @game = gameClazz.new()
+                        @server = HostGame.new(@game)
+                        @game, @game_started, @players, players_index, @board = @server.join_server()
+                        @player_playing = @players[players_index]
+                        puts "My players are #{@players}"
+                        puts "size #{@players.size}"
+                        puts "My player playing is #{@player_playing}"
+                        @online_mode = true
+                        for obj in @observer_views
+                            @board.add_observer(obj)
+                        end
+                        for re in @players
+                            for obj in @observer_views
+                                re.add_observer(obj)
+                            end
+                        end
+
                     else
-                        raise ModeNotSupported,"#{commands[1]} mode not supported."
+                        raise StandardError, "#{gameClazz} not a Game."
                     end
+
+
                 elsif commands[0].downcase.include? "restart" or
                      commands[0].downcase.include? "reset"
                     @players = []
                     @board = nil
                     @player_playing = nil
                     @game_started = false
+                    @server.close_server()
                 elsif commands[0].downcase.include? "ai"
                     self.take_turn(0)
                 elsif commands[0].downcase.include? "remote"
