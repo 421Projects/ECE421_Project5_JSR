@@ -144,7 +144,7 @@ class LocalAIPlayer < LocalPlayer
 
             if board_piece == value
                 good_pieces += 1
-            elsif board_piece != "*"
+            elsif board_piece != nil
                 return 0
             end
         end

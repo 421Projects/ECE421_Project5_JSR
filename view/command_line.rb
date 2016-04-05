@@ -20,6 +20,12 @@ class CommandLineView
         puts "Mode files loaded are:"
         puts CMDController.get_mode_files_loaded
 
+
+        puts "--------------------------------------------"
+        puts "What is the player's name?"
+        # http://stackoverflow.com/questions/6085518/what-is-the-easiest-way-to-push-an-element-to-the-beginning-of-the-array
+        parse_command(get_command().unshift("name"))
+
         while (@running)
             if CMDController.game_started?
                 puts "running"
@@ -70,6 +76,12 @@ class CommandLineView
             CMDController.handle_event(['reset'])
         elsif arg.is_a? Board
             self.pretty_print(arg)
+        elsif arg.is_a? String and arg.include? "Message"
+            self.pretty_print(arg)
+        elsif arg.is_a? String and arg.include? "name"
+            puts "What is the player's name?"
+            # http://stackoverflow.com/questions/6085518/what-is-the-easiest-way-to-push-an-element-to-the-beginning-of-the-array
+            parse_command(get_command().unshift("name"))
         else
             puts "#{arg} not recognized."
         end

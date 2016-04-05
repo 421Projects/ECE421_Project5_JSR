@@ -20,9 +20,11 @@ class HostGame
     invariant(@port) {@port > 1024 && @port < 65535}
 
     #Contract Game, Nat => nil
-    def initialize(game, port=8080)
+    def initialize(game=Connect4.new, ip="127.0.0.1", port=8080, url_extension="/RPC2")
         @game = game
         @port = port
+        @ip = ip
+        @url_extension = url_extension
         @server_handle = nil
         @server_thread = nil
         @move_to_send = -1
@@ -70,11 +72,11 @@ class HostGame
             CMDController.game_history[turn]
         end
 
-        @server_handle.add_handler("join_game") do
+        @server_handle.add_handler("join_game") do |player_name|
             CMDController.player_id = CMDController.player_id + 1
             this_players_id = CMDController.player_id
             if CMDController.get_number_of_players_playing < @game.num_of_players
-                CMDController.add_remote_player()
+                CMDController.add_remote_player(player_name)
             end
             while CMDController.get_number_of_players_playing < @game.num_of_players or
                  CMDController.players.include?(CMDController.player_playing) == false
@@ -102,19 +104,13 @@ class HostGame
     end
 
     #Contract None => nil
-    def join_server()
+    def join_server(player_name)
         # http://ruby-doc.org/stdlib-2.0.0/libdoc/xmlrpc/rdoc/XMLRPC/Server.html
         # add handler for receiving piece placements from connected clients
-        @server_handle = XMLRPC::Client.new("127.0.0.1", "/RPC2", @port)
-        game_attributes = @server_handle.call("join_game")
+        @server_handle = XMLRPC::Client.new(@ip, @url_extension, @port)
+        game_attributes = @server_handle.call("join_game", player_name)
         return YAML::load(game_attributes)
-        # return game_attributes
     end
-
-    def send_and_get_move(my_move)
-        return @server_handle.call("send_column_played", my_move)
-    end
-
 
     Contract None => nil
     def close_server()

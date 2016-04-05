@@ -108,7 +108,7 @@ class Board
         return nil
 	end
 
-    Contract Nat, Nat => String
+    Contract Nat, Nat => Or[String, nil]
 	def get_player_on_pos(row, col)
 		return @board[[row, col]]
 	end

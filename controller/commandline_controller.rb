@@ -53,6 +53,7 @@ class CMDController
         @turn = 1
         @online_mode = false
         @player_id = 1 # starting with host player
+        @player_name = nil
     end
 
     Contract None => ArrayOf[Class]
@@ -144,10 +145,6 @@ class CMDController
         return @server.hosting?
     end
 
-    def self.send_and_get_move_from_server(column_num)
-        return @server.send_and_get_move(column_num)
-    end
-
     def self.get_server
         return @server
     end
@@ -159,11 +156,11 @@ class CMDController
         @player_id = arg
     end
 
-    def self.add_remote_player()
+    def self.add_remote_player(player_decided_name)
         player_name = @names.pop
         player_pattern = @patterns.pop
         puts "adding player #{player_name}"
-        re = RemoteRealPlayer.new(player_name, player_pattern)
+        re = RemoteRealPlayer.new(player_name, player_pattern, player_decided_name)
         for obj in @observer_views
             re.add_observer(obj)
         end
@@ -171,10 +168,10 @@ class CMDController
 
         for i in 2..@game.num_of_players
             if player_id == i
-                re = LocalRealPlayer.new(player_name, player_pattern)
+                re = LocalRealPlayer.new(player_name, player_pattern, player_decided_name)
                 @clients_players[i].push(re)
             else
-                re = RemoteRealPlayer.new(player_name, player_pattern)
+                re = RemoteRealPlayer.new(player_name, player_pattern, player_decided_name)
                 @clients_players[i].push(re)
             end
         end
@@ -196,40 +193,34 @@ class CMDController
                 @clients_players[i] = []
             end
             @game_started = true
-            #patterns = [@game.p1_patterns, @game.p2_patterns]
-            #names = [@game.p1_piece, @game.p2_piece]
             @patterns = @game.patterns
             @names = @game.pieces
             @server = HostGame.new(@game)
             @server.start_server()
-            # for i in 0..(@AI_players-1)
-            #     if @players.size < @game.num_of_players and
-            #        @players.size <= 2
-            #         ai = LocalAIPlayer.new(names[i], patterns[i],
-            #                           names[i+1] || names[0], patterns[i+1] || patterns[0])
-            #         @player_playing = ai
-            #         for obj in @observer_views
-            #             ai.add_observer(obj)
-            #         end
-            #         @players.push(ai)
-            #     end
-            # end
 
             player_name = @names.pop
             player_pattern = @patterns.pop
-            re = LocalRealPlayer.new(player_name, player_pattern)
+
+            if (@player_name == nil)
+                c.changed
+                c.notify_observers("gimme name!!!")
+                while (@player_name == nil)
+                    sleep(0.5)
+                end
+            end
+
+            re = LocalRealPlayer.new(player_name, player_pattern, @player_name)
             for obj in @observer_views
                 re.add_observer(obj)
             end
-            #re.add_observer(@server)
-            #@server.add_observer(re)
             @players.push(re)
 
-            re = RemoteRealPlayer.new(player_name, player_pattern)
+            re = RemoteRealPlayer.new(player_name, player_pattern, @player_name)
             for i in 2..@game.num_of_players
                 @clients_players[i].push(re)
             end
-            #@clients_players.push(re)
+
+            @player_name = nil
 
             while @players.size < @game.num_of_players #2 # number of players
                 # puts "waiting... for players"
@@ -295,11 +286,20 @@ class CMDController
             end
 
             while @players.size < @game.num_of_players #2 # number of players
-                re = LocalRealPlayer.new(@names.pop, @patterns.pop)
+                        if (@player_name == nil)
+                            c.changed
+                            c.notify_observers("gimme name!!!")
+                            while (@player_name == nil)
+                                sleep(0.5)
+                            end
+                        end
+                re = LocalRealPlayer.new(@names.pop, @patterns.pop, @player_name)
                 for obj in @observer_views
                     re.add_observer(obj)
                 end
                 @players.push(re)
+
+                @player_name = nil
             end
 
             @board = Board.new(@game.board_width, @game.board_height)
@@ -373,7 +373,20 @@ class CMDController
               @game_started
                 self.take_turn(Integer(commands[0]))
             elsif commands[0].respond_to?("downcase")
-                if commands[0].downcase.include? "new" or
+                if commands[0].downcase.include? "name"
+                    if (commands[1].size <= 10)
+                        @player_name = commands[1]
+                    else
+                        c = self.new
+                        for obj in @observer_views
+                            c.add_observer(obj)
+                        end
+                        changed
+                        notify_observers("Message: Name too long. Max 10 chars.")
+                        sleep(1)
+                        exit(0)
+                    end
+                elsif commands[0].downcase.include? "new" or
                   commands[0].downcase.include? "create"
                     ai_count = Integer(commands[2]) rescue nil
                     begin
@@ -402,18 +415,30 @@ class CMDController
                     end
                 elsif commands[0].downcase.include? "join"
                     # commands[1] = "Connect4"
-                    url = commands[2]
-                    port = Integer(commands[3]) rescue nil
+                    given_host = commands[2]
+                    given_port = Integer(commands[3]) rescue nil
                     begin
                         gameClazz = Object.const_get(commands[1]) # Game
                     rescue StandardError
                         raise ModeNotSupported
                     end
                     if gameClazz.superclass == Game
+                        c = self.new
+                        for obj in @observer_views
+                            c.add_observer(obj)
+                        end
                         @game = gameClazz.new()
-                        @server = HostGame.new(@game)
-                        @game, @game_started, @players, players_index, @board = @server.join_server()
+                        if (@player_name == nil)
+                            c.changed
+                            c.notify_observers("gimme name!!!")
+                            while (@player_name == nil)
+                                sleep(0.5)
+                            end
+                        end
+                        @server = HostGame.new(game=@game, host=given_host, port=given_port)
+                        @game, @game_started, @players, players_index, @board = @server.join_server(@player_name)
                         @player_playing = @players[players_index]
+                        @player_name = nil
                         puts "My players are #{@players}"
                         puts "size #{@players.size}"
                         puts "My player playing is #{@player_playing}"
@@ -438,7 +463,10 @@ class CMDController
                     @board = nil
                     @player_playing = nil
                     @game_started = false
-                    @server.close_server()
+                    if @online_mode
+                        @server.close_server()
+                        @online_mode = false
+                    end
                 elsif commands[0].downcase.include? "ai"
                     self.take_turn(0)
                 elsif commands[0].downcase.include? "remote"
