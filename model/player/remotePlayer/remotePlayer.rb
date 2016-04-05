@@ -11,19 +11,19 @@ class RemotePlayer < Player
 
     @move_made = -1
     def get_move(arg)
-        if CMDController.hosting?
-            return CMDController.get_server.get_move
+        if CMDController.instance.hosting?
+            return CMDController.instance.get_server.get_move
         else
-            return CMDController.get_server.server_handle.call("get_column_played", CMDController.turn)
+            return CMDController.instance.get_server.server_handle.call("get_column_played", CMDController.instance.turn)
         end
     end
 
     def send_move(column_num)
-        if CMDController.hosting?
-            CMDController.get_server.send_move(column_num)
+        if CMDController.instance.hosting?
+            CMDController.instance.get_server.send_move(column_num)
         else
             puts "Gone where you didnt think!!!"
-            CMDController.get_server.server_handle.call("send_column_played", column_num, CMDController.turn)
+            CMDController.instance.get_server.server_handle.call("send_column_played", column_num, CMDController.instance.turn)
         end
         true
     end

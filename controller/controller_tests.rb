@@ -51,32 +51,32 @@ class ControllerTest < Test::Unit::TestCase
     end
 
     def test_commandline
-        CMDController.initialize([CommandLineView.new])
+        CMDController.instance.initialize([CommandLineView.new])
         create_game_commandline
         handle_event_commandline
     end
 
     def create_game_commandline
-        assert_raise CMDController::ModeNotSupported do
-            CMDController.create_game("ModeNotCreated", 1)
+        assert_raise CMDController.instance::ModeNotSupported do
+            CMDController.instance.create_game("ModeNotCreated", 1)
         end
-        assert_raise CMDController::AICountError do
-            CMDController.create_game("Connect4", 3)
+        assert_raise CMDController.instance::AICountError do
+            CMDController.instance.create_game("Connect4", 3)
         end
-        assert_raise CMDController::AICountError do
-            CMDController.create_game("Connect4", -1)
+        assert_raise CMDController.instance::AICountError do
+            CMDController.instance.create_game("Connect4", -1)
         end
     end
 
     def handle_event_commandline
-        assert_raise CMDController::CommandNotSupported do
-            CMDController.handle_event(["randomCommand"])
+        assert_raise CMDController.instance::CommandNotSupported do
+            CMDController.instance.handle_event(["randomCommand"])
         end
         assert_raise do
-            CMDController.handle_event("randomCommand")
+            CMDController.instance.handle_event("randomCommand")
         end
         assert_raise do
-            CMDController.handle_event(1)
+            CMDController.instance.handle_event(1)
         end
     end
 

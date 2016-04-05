@@ -8,9 +8,11 @@ require_relative "../model/host_game"
 require 'contracts'
 require 'observer'
 require "xmlrpc/server"
+require "singleton"
 
 class CMDController
 
+    include Singleton
     include Observable
     include Contracts::Core
     include Contracts::Builtin
@@ -24,8 +26,8 @@ class CMDController
     end
 
 
-    Contract ArrayOf[Object] => Any
-    def self.initialize(observer_views)
+    #Contract ArrayOf[Object] => Any
+    def initialize()
         original_dir = Dir.pwd
         Dir.chdir(__dir__)
 
@@ -39,7 +41,8 @@ class CMDController
         @modes_loaded = classes_after - classes_before
 
         @game_started = false
-        @observer_views = observer_views.to_a
+        # @observer_views = observer_views.to_a
+        @observer_views = []
         @players = []
         @clients_players = Hash.new
         @board = nil
@@ -56,84 +59,31 @@ class CMDController
         @player_name = nil
     end
 
-    Contract None => ArrayOf[Class]
-    def self.get_mode_files_loaded
-        @modes_loaded
-    end
-
-    def self.get_number_of_players_playing
-        @players.size
-    end
-
-    def self.game
-        @game
-    end
-
-    def self.game_started
-        @game_started
-    end
-
-    def self.players
-        @players
-    end
-
-    def self.clients_players
-        @clients_players
-    end
-
-    def self.player_playing
-        @player_playing
-    end
-
-    def self.clients_player_playing_index
-        @clients_player_playing_index
-    end
-
-    def self.board
-        @board
-    end
-
-    def self.clients_board
-        @clients_board
-    end
-
-    def self.game_history
-        @game_history
-    end
-
-    def self.turn
-        @turn
-    end
-
-    def self.online_mode
-        @online_mode
-    end
+    attr_accessor :modes_loaded, :game, :game_started, :players, :clients_players,
+                  :player_playing, :clients_player_playing_index,
+                  :board, :clients_board, :game_history, :turn, :online_mode,
+                  :observer_views
 
     Contract None => String
-    def self.get_player_playings_name
+    def get_player_playings_name
         return @player_playing.to_s
     end
 
     Contract None => Bool
-    def self.human_player_playing?
+    def human_player_playing?
         return @player_playing.is_a? LocalRealPlayer
     end
 
     Contract None => Bool
-    def self.ai_player_playing?
+    def ai_player_playing?
         return @player_playing.is_a? LocalAIPlayer
     end
 
-    def self.remote_player_playing?
+    def remote_player_playing?
         return @player_playing.is_a? RemotePlayer
     end
 
-    Contract None => Bool
-    def self.game_started?
-        @game_started
-    end
-
-    def self.get_player_names
+    def get_player_names
         player_list = []
         for p in @players
             player_list.push(p.name)
@@ -141,25 +91,27 @@ class CMDController
         return player_list
     end
 
-    def self.hosting?
+    def hosting?
         return @server.hosting?
     end
 
-    def self.get_server
+    def get_server
         return @server
     end
 
-    def self.player_id
+    def player_id
         return @player_id
     end
-    def self.player_id=(arg)
+    def player_id=(arg)
         @player_id = arg
     end
 
-    def self.add_remote_player(player_decided_name)
+    def add_remote_player(player_decided_name)
         player_name = @names.pop
         player_pattern = @patterns.pop
-        puts "adding player #{player_name}"
+        changed
+        notify_observers("Message: #{player_decided_name} has joined.")
+        # puts "adding player #{player_name}"
         re = RemoteRealPlayer.new(player_name, player_pattern, player_decided_name)
         for obj in @observer_views
             re.add_observer(obj)
@@ -177,11 +129,7 @@ class CMDController
         end
     end
 
-    def self.create_hosted_game(game) # No AIs, atm
-        c = self.new
-        for obj in @observer_views
-            c.add_observer(obj)
-        end
+    def create_hosted_game(game) # No AIs, atm
         begin
             gameClazz = Object.const_get(game) # Game
         rescue StandardError
@@ -202,8 +150,8 @@ class CMDController
             player_pattern = @patterns.pop
 
             if (@player_name == nil)
-                c.changed
-                c.notify_observers("gimme name!!!")
+                changed
+                notify_observers("gimme name!!!")
                 while (@player_name == nil)
                     sleep(0.5)
                 end
@@ -238,9 +186,9 @@ class CMDController
             first_players_index = rand(0..(@players.size-1))
             @player_playing = @players[first_players_index]
             @clients_player_playing_index = first_players_index
-            puts "(HOST) My players are #{@players}"
-            puts "(HOST) size #{@players.size}"
-            puts "(HOST) My player playing is #{@player_playing}"
+            # puts "(HOST) My players are #{@players}"
+            # puts "(HOST) size #{@players.size}"
+            # puts "(HOST) My player playing is #{@player_playing}"
         else
             raise StandardError, "#{gameClazz} not a Game."
         end
@@ -248,11 +196,7 @@ class CMDController
     end
 
     Contract String, Maybe[Integer] => Game
-    def self.create_game(game, ai_players=0)
-        c = self.new
-        for obj in @observer_views
-            c.add_observer(obj)
-        end
+    def create_game(game, ai_players=0)
         if ai_players.to_i.to_s == ai_players.to_s and
           ai_players.to_i >= 0 and
           ai_players.to_i <= 2
@@ -287,8 +231,8 @@ class CMDController
 
             while @players.size < @game.num_of_players #2 # number of players
                         if (@player_name == nil)
-                            c.changed
-                            c.notify_observers("gimme name!!!")
+                            self.changed
+                            self.notify_observers("gimme name!!!")
                             while (@player_name == nil)
                                 sleep(0.5)
                             end
@@ -317,7 +261,7 @@ class CMDController
     end
 
     Contract Maybe[Nat] => nil
-    def self.take_turn(arg)
+    def take_turn(arg)
         if arg == nil
             return arg
         end
@@ -331,7 +275,7 @@ class CMDController
                 if self.hosting?
                     @server.send_move(arg)
                 else
-                    CMDController.get_server.server_handle.call("send_column_played", arg, @turn)
+                    get_server.server_handle.call("send_column_played", arg, @turn)
                 end
             end
             @previous_play = arg
@@ -354,33 +298,30 @@ class CMDController
     end
 
     Contract None => Board
-    def self.get_board()
+    def et_board()
         return @board
     end
 
     Contract Nat => nil
-    def self.set_AIs(count)
+    def set_AIs(count)
         @AI_players = count
         nil
     end
 
     Contract ArrayOf[String] => nil
-    def self.handle_event(commands)
+    def handle_event(commands)
         case commands
         when Array
             if commands[0].respond_to?("to_i") and
               commands[0].to_i.to_s == commands[0] and
               @game_started
-                self.take_turn(Integer(commands[0]))
+                take_turn(Integer(commands[0]))
             elsif commands[0].respond_to?("downcase")
                 if commands[0].downcase.include? "name"
                     if (commands[1].size <= 10)
                         @player_name = commands[1]
                     else
-                        c = self.new
-                        for obj in @observer_views
-                            c.add_observer(obj)
-                        end
+                        #c = self.new
                         changed
                         notify_observers("Message: Name too long. Max 10 chars.")
                         sleep(1)
@@ -395,7 +336,7 @@ class CMDController
                         raise ne, "#{commands[1]} mode not found."
                     end
                     if gameClazz.superclass == Game
-                        self.create_game(commands[1], ai_count)
+                        create_game(commands[1], ai_count)
                         online_mode = false
                     else
                         raise ModeNotSupported,"#{commands[1]} mode not supported."
@@ -408,7 +349,7 @@ class CMDController
                         raise ne, "#{commands[1]} mode not found."
                     end
                     if gameClazz.superclass == Game
-                        self.create_hosted_game(commands[1])
+                        create_hosted_game(commands[1])
                         @online_mode = true
                     else
                         raise ModeNotSupported,"#{commands[1]} mode not supported."
@@ -423,14 +364,10 @@ class CMDController
                         raise ModeNotSupported
                     end
                     if gameClazz.superclass == Game
-                        c = self.new
-                        for obj in @observer_views
-                            c.add_observer(obj)
-                        end
                         @game = gameClazz.new()
                         if (@player_name == nil)
-                            c.changed
-                            c.notify_observers("gimme name!!!")
+                            changed
+                            notify_observers("gimme name!!!")
                             while (@player_name == nil)
                                 sleep(0.5)
                             end
@@ -439,9 +376,9 @@ class CMDController
                         @game, @game_started, @players, players_index, @board = @server.join_server(@player_name)
                         @player_playing = @players[players_index]
                         @player_name = nil
-                        puts "My players are #{@players}"
-                        puts "size #{@players.size}"
-                        puts "My player playing is #{@player_playing}"
+                        # puts "My players are #{@players}"
+                        # puts "size #{@players.size}"
+                        # puts "My player playing is #{@player_playing}"
                         @online_mode = true
                         for obj in @observer_views
                             @board.add_observer(obj)
@@ -468,9 +405,9 @@ class CMDController
                         @online_mode = false
                     end
                 elsif commands[0].downcase.include? "ai"
-                    self.take_turn(0)
+                    take_turn(0)
                 elsif commands[0].downcase.include? "remote"
-                    self.take_turn(0)
+                    take_turn(0)
                 else
                     raise CommandNotSupported, "#{commands} not supported."
                 end

@@ -16,9 +16,10 @@ class CommandLineView
 
     Contract None => nil
     def start_game()
-        CMDController.initialize([self])
+        CMDController.instance.observer_views.push(self)
+        CMDController.instance.add_observer(self)
         puts "Mode files loaded are:"
-        puts CMDController.get_mode_files_loaded
+        puts CMDController.instance.modes_loaded
 
 
         puts "--------------------------------------------"
@@ -27,29 +28,29 @@ class CommandLineView
         parse_command(get_command().unshift("name"))
 
         while (@running)
-            if CMDController.game_started?
+            if CMDController.instance.game_started
                 puts "running"
-                if CMDController.human_player_playing?
-                    puts "#{eval('CMDController.get_player_playings_name')} Next Piece?> "
+                if CMDController.instance.human_player_playing?
+                    puts "#{eval('CMDController.instance.get_player_playings_name')} Next Piece?> "
                     parse_command(get_command())
-                elsif CMDController.ai_player_playing?
+                elsif CMDController.instance.ai_player_playing?
                     t = Thread.new {
-                        CMDController.handle_event(["ai_move"])
+                        CMDController.instance.handle_event(["ai_move"])
                     }
-                    print "AI #{CMDController.get_player_playings_name} Thinking"
+                    print "AI #{CMDController.instance.get_player_playings_name} Thinking"
                     print "." until t.join(0.25)
                     STDOUT.flush
-                elsif CMDController.remote_player_playing?
+                elsif CMDController.instance.remote_player_playing?
                     puts "remote move"
                     t = Thread.new {
-                        CMDController.handle_event(["remote_move"])
+                        CMDController.instance.handle_event(["remote_move"])
                     }
-                    print "Remote Player #{CMDController.get_player_playings_name} Thinking"
+                    print "Remote Player #{CMDController.instance.get_player_playings_name} Thinking"
                     print "." until t.join(0.25)
                     STDOUT.flush
                 else
-                    puts "We got nothing! #{CMDController.player_playing}"
-                    puts "We got nothing! #{CMDController.players}"
+                    puts "We got nothing! #{CMDController.instance.player_playing}"
+                    puts "We got nothing! #{CMDController.instance.players}"
                     sleep(1)
                 end
             else
@@ -69,15 +70,14 @@ class CommandLineView
 
     #Contract Or[Player, Board, Game] => nil
     def update(arg)
-        puts "called"
         if arg.is_a? Player
             puts "#{arg.to_s} has won!"
-            #eval("CMDController.handle_event(['reset'])")
-            CMDController.handle_event(['reset'])
+            #eval("CMDController.instance.handle_event(['reset'])")
+            CMDController.instance.handle_event(['reset'])
         elsif arg.is_a? Board
             self.pretty_print(arg)
         elsif arg.is_a? String and arg.include? "Message"
-            self.pretty_print(arg)
+            puts (arg)
         elsif arg.is_a? String and arg.include? "name"
             puts "What is the player's name?"
             # http://stackoverflow.com/questions/6085518/what-is-the-easiest-way-to-push-an-element-to-the-beginning-of-the-array
@@ -100,7 +100,7 @@ class CommandLineView
                  "modes: list modes\n"
         elsif user_input[0].downcase.include? "mode"
             puts "Mode files loaded are:"
-            puts CMDController.get_mode_files_loaded
+            puts CMDController.instance.get_mode_files_loaded
         elsif user_input[0].downcase.include? "exit" or
              user_input[0].downcase.include? "quit"
             @running = false
@@ -113,13 +113,13 @@ class CommandLineView
             #            begin
             if (user_input[0].downcase.include? "join")
                 t = Thread.new {
-                    CMDController.handle_event(user_input)
+                    CMDController.instance.handle_event(user_input)
                 }
                 print "Waiting for game to start"
                 print "." until t.join(0.25)
                 STDOUT.flush
             else
-                CMDController.handle_event(user_input)
+                CMDController.instance.handle_event(user_input)
             end
             #            rescue StandardError => se
             #                 puts se.message

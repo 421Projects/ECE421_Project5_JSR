@@ -37,16 +37,16 @@ class HostGame
     end
 
     def send_move(move)
-        CMDController.game_history[CMDController.turn] = move
+        CMDController.instance.game_history[CMDController.instance.turn] = move
         #@move_to_send = move
     end
 
     def get_move()
-        while CMDController.game_history[CMDController.turn] == -1
-            puts "host waiting for client to move for #{CMDController.turn}"
+        while CMDController.instance.game_history[CMDController.instance.turn] == -1
+            # puts "host waiting for client to move for #{CMDController.instance.turn}"
             sleep(1)
         end
-        CMDController.game_history[CMDController.turn]
+        CMDController.instance.game_history[CMDController.instance.turn]
     end
 
 
@@ -58,39 +58,39 @@ class HostGame
         @server_handle = XMLRPC::Server.new(@port)
 
         @server_handle.add_handler("send_column_played") do |column_num, turn|
-            # puts "got move for #{CMDController.turn}"
-            CMDController.game_history[turn] = column_num
+            # puts "got move for #{CMDController.instance.turn}"
+            CMDController.instance.game_history[turn] = column_num
             #@move_received = column_num
             true
         end
 
         @server_handle.add_handler("get_column_played") do |turn|
-            while CMDController.game_history[turn] == -1
-                puts "client waiting for host to move #{turn}"
+            while CMDController.instance.game_history[turn] == -1
+                # puts "client waiting for host to move #{turn}"
                 sleep(1)
             end
-            CMDController.game_history[turn]
+            CMDController.instance.game_history[turn]
         end
 
         @server_handle.add_handler("join_game") do |player_name|
-            CMDController.player_id = CMDController.player_id + 1
-            this_players_id = CMDController.player_id
-            if CMDController.get_number_of_players_playing < @game.num_of_players
-                CMDController.add_remote_player(player_name)
+            CMDController.instance.player_id = CMDController.instance.player_id + 1
+            this_players_id = CMDController.instance.player_id
+            if CMDController.instance.players.size < @game.num_of_players
+                CMDController.instance.add_remote_player(player_name)
             end
-            while CMDController.get_number_of_players_playing < @game.num_of_players or
-                 CMDController.players.include?(CMDController.player_playing) == false
+            while CMDController.instance.players.size < @game.num_of_players or
+                 CMDController.instance.players.include?(CMDController.instance.player_playing) == false
                 sleep(1)
             end
 
-            puts "My player id is #{this_players_id}"
+            # puts "My player id is #{this_players_id}"
             #Marshal.dump([
             YAML::dump([
-                           CMDController.game,
-                           CMDController.game_started,
-                           CMDController.clients_players[this_players_id],
-                           CMDController.clients_player_playing_index,
-                           CMDController.clients_board
+                           CMDController.instance.game,
+                           CMDController.instance.game_started,
+                           CMDController.instance.clients_players[this_players_id],
+                           CMDController.instance.clients_player_playing_index,
+                           CMDController.instance.clients_board
                        ])
         end
 
