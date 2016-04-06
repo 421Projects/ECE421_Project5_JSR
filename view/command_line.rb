@@ -151,6 +151,19 @@ class CommandLineView
         puts board_pic
         nil
     end
+
+    def pretty_print_table(table)
+        puts "______________________________________________"
+        puts "|Name    |Wins    |Losses  |Ties    |Points  |"
+        puts "|........|........|........|........|........|"
+        for row in table
+            puts "|%8s|%8s|%8s|%8s|%8s|" % [row['name'], row['wins'], row['losses'], row['ties'],
+                                          row['points']]
+            #puts "#{row['name']} | #{row['wins']} " +
+            #     "| #{row['losses']} | #{row['ties']} | #{row['points']}"
+        end
+        puts "|________|________|________|________|________|"
+    end
 end
 # http://stackoverflow.com/questions/2249310/if-name-main-equivalent-in-ruby
 if __FILE__ == $0
