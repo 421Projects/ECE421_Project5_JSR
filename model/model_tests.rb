@@ -2,6 +2,7 @@ require "test/unit"
 require_relative "player/player"
 require_relative "player/localPlayer/local_ai_player"
 require_relative "board"
+require_relative "mysql_adapter"
 require_relative "game/game"
 require_relative "game/connect4"
 require_relative "game/otto_toot"
@@ -202,7 +203,7 @@ class Connect4ModelTest < Test::Unit::TestCase
     end
 
     def test_player_board_otto_toot_mode
-        
+
         game = OttoToot.new()
 
         p1 = Player.new(game.p1_piece, game.p1_patterns) # Wins with OTTO
@@ -531,6 +532,115 @@ class Connect4ModelTest < Test::Unit::TestCase
         assert_raise NotImplementedError do
             thrown = Game.new
         end
+    end
+
+
+    def check_stats_for_player(msa, player, asserted_stats=[0,0,0,0],
+                               error_message="Default values incorrect.")
+        wins, losses, ties, points = [
+            msa.get_wins_for_player(player),
+            msa.get_losses_for_player(player),
+            msa.get_ties_for_player(player),
+            msa.get_points_for_player(player)
+        ]
+        stats = [wins, losses, ties, points]
+
+        assert_equal(stats, asserted_stats,
+                     error_message)
+    end
+
+    def test_mysql_adapter_basic_flow()
+        msa = MySQLAdapter.new
+
+        assert(msa != nil)
+
+        test_user = "test_user"
+
+        msa.add_player(test_user)
+        check_stats_for_player(msa, test_user)
+
+        msa.add_win_for_player(test_user)
+        check_stats_for_player(msa, test_user, [1,0,0,2],
+                               "Win not recoreded properly.")
+
+        msa.add_loss_for_player(test_user)
+        check_stats_for_player(msa, test_user, [1,1,0,2],
+                               "Loss not recoreded properly.")
+
+        msa.add_tie_for_player(test_user)
+        check_stats_for_player(msa, test_user, [1,1,1,3],
+                               "Tie not recoreded properly.")
+
+        wins = 1
+        losses = 1
+        ties = 1
+        points = 3
+
+        iterations = rand(5..10)
+        for i in 1..iterations
+            msa.add_win_for_player(test_user)
+            wins += 1
+            points += 2
+            check_stats_for_player(msa, test_user, [wins,losses,ties,points],
+                                   "Win not recoreded properly.")
+        end
+
+        iterations = rand(5..10)
+        for i in 1..iterations
+            msa.add_loss_for_player(test_user)
+            losses += 1
+            check_stats_for_player(msa, test_user, [wins,losses,ties,points],
+                                   "Loss not recoreded properly.")
+        end
+
+        iterations = rand(5..10)
+        for i in 1..iterations
+            msa.add_tie_for_player(test_user)
+            ties += 1
+            points += 1
+            check_stats_for_player(msa, test_user, [wins,losses,ties,points],
+                                   "Tie not recoreded properly.")
+        end
+
+        msa.delete_player(test_user)
+        assert_raise do
+            check_stats_for_player(msa, test_user, [-1,-1,-1,-1],
+                                   "Player not properly deleted.")
+        end
+    end
+
+    def test_mysql_adapter_exception_flow()
+        msa = MySQLAdapter.new
+
+        assert(msa != nil)
+
+        test_user = "test_user"
+        msa.add_player(test_user)
+        check_stats_for_player(msa, test_user)
+
+        assert_raise do
+            msa.add_player(test_user)
+        end
+
+        msa.delete_player(test_user)
+
+        assert_raise do
+            msa.delete_player(test_user)
+        end
+
+        assert_raise do
+            msa.get_wins_for_player(msa,name)
+        end
+        assert_raise do
+            msa.get_losses_for_player(msa,name)
+        end
+        assert_raise do
+            msa.get_ties_for_player(msa,name)
+        end
+        assert_raise do
+            msa.get_points_for_player(msa,name)
+        end
+
     end
 
     def test_basic_remote_play

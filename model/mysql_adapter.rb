@@ -2,6 +2,11 @@ require "mysql2"
 
 class MySQLAdapter
 
+    class PlayerAlreadyExists < StandardError
+    end
+    class PlayerNotFound < StandardError
+    end
+
     def initialize(host="127.0.0.1", port=8080,
                    username="admin3iQCfbc", password="2nUhtK3IX5RT",
                    db="myapp")
@@ -11,7 +16,7 @@ class MySQLAdapter
         @password = password
         @db = db
         @con = Mysql2::Client.new(:host => @host, :username => @username,
-                                 :password => @password)
+                                  :password => @password)
         @con.query("use #{@db}")
 
         if @con.query("show tables LIKE 'players'").to_a.size < 1
@@ -20,52 +25,98 @@ class MySQLAdapter
     end
 
     def add_player(name)
-        @con.query("insert into players  values ('#{name}', 0,0,0,0);")
+        if player_exists?(name)
+            raise PlayerAlreadyExists, "#{name} already exists in the database."
+        else
+            @con.query("insert into players  values ('#{name}', 0,0,0,0);")
+        end
     end
 
     def delete_player(name)
-        @con.query("delete from players where name=#{name};")
+        if player_exists?(name)
+            @con.query("delete from players where name='#{name}';")
+        else
+            raise PlayerNotFound, "#{name} not found in the database."
+        end
+    end
+
+    def player_exists?(name)
+        @con.query("select * from players where name='#{name}';").each do |row|
+            return true
+        end
+        return false
     end
 
     def get_wins_for_player(name)
-        @con.query("select wins from players where name='#{name}';").each do |row|
-            return row["wins"]
-        end
+        check_and_run_query(name) {
+            @con.query("select wins from players where name='#{name}';").each do |row|
+                return row["wins"]
+            end
+        }
     end
 
     def get_losses_for_player(name)
-        @con.query("select losses from players where name='#{name}';").each do |row|
-            return row["losses"]
-        end
+        check_and_run_query(name) {
+            @con.query("select losses from players where name='#{name}';").each do |row|
+                return row["losses"]
+            end
+        }
     end
 
     def get_ties_for_player(name)
-        @con.query("select ties from players where name='#{name}';").each do |row|
-            return row["ties"]
-        end
+        check_and_run_query(name) {
+            @con.query("select ties from players where name='#{name}';").each do |row|
+                return row["ties"]
+            end
+        }
     end
 
     def get_points_for_player(name)
-        @con.query("select points from players where name='#{name}';").each do |row|
-            return row["points"]
-        end
+        check_and_run_query(name) {
+            @con.query("select points from players where name='#{name}';").each do |row|
+                return row["points"]
+            end
+        }
     end
 
     def set_wins_for_player(name, win_count)
-        @con.query("update players set wins='#{win_count}' where name='#{name}';")
+        check_and_run_query(name) {
+            @con.query("update players set wins='#{win_count}' where name='#{name}';")
+        }
     end
 
     def set_points_for_player(name, point_count)
-        @con.query("update players set points='#{point_count}' where name='#{name}';")
+        check_and_run_query(name) {
+            @con.query("update players set points='#{point_count}' where name='#{name}';")
+        }
     end
 
     def set_losses_for_player(name, loss_count)
-        @con.query("update players set losses='#{loss_count}' where name='#{name}';")
+        check_and_run_query(name) {
+            @con.query("update players set losses='#{loss_count}' where name='#{name}';")
+        }
     end
 
     def set_ties_for_player(name, tie_count)
-        @con.query("update players set ties='#{tie_count}' where name='#{name}';")
+        check_and_run_query(name) {
+            @con.query("update players set ties='#{tie_count}' where name='#{name}';")
+        }
     end
+
+    def check_and_run_query(name)
+        # http://www.tutorialspoint.com/ruby/ruby_blocks.htm
+        if player_exists?(name)
+            yield
+        else
+            raise PlayerNotFound, "#{name} not found in the database."
+        end
+    end
+
+    private :set_wins_for_player,
+            :set_losses_for_player,
+            :set_ties_for_player,
+            :set_points_for_player,
+            :check_and_run_query
 
     def add_win_for_player(name)
         wins = get_wins_for_player(name)
