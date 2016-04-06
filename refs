@@ -88,3 +88,15 @@ http://stackoverflow.com/questions/8258517/how-to-check-whether-a-string-contain
 
 unshift
 http://stackoverflow.com/questions/6085518/what-is-the-easiest-way-to-push-an-element-to-the-beginning-of-the-array
+
+show tables
+http://stackoverflow.com/questions/8829102/mysql-check-if-table-exists-without-using-select-from
+
+mysql 
+http://www.w3schools.com/sql/sql_update.asp
+
+mysql2 ruby 
+http://api.rubyonrails.org/classes/ActiveRecord/ConnectionAdapters/MysqlAdapter.html
+http://www.rubydoc.info/gems/mysql2/0.2.6#Usage
+http://askubuntu.com/questions/223012/how-to-install-mysql-client-on-10-04
+http://stackoverflow.com/questions/4115126/ruby-gem-mysql2-install-failing
