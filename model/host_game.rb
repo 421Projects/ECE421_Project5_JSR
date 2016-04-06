@@ -17,7 +17,7 @@ class HostGame
     attr_accessor :server_handle
 
     # http://www.ingate.com/files/422/fwmanual-en/xa10285.html
-    invariant(@port) {@port > 1024 && @port < 65535}
+    invariant(@port) {@port.to_i > 1024 && @port.to_i < 65535}
 
     #Contract Game, Nat => nil
     def initialize(game=Connect4.new, ip="127.0.0.1", port=8080, url_extension="/RPC2")
@@ -54,8 +54,7 @@ class HostGame
     def start_server()
         # http://ruby-doc.org/stdlib-2.0.0/libdoc/xmlrpc/rdoc/XMLRPC/Server.html
         # add handler for receiving piece placements from connected clients
-
-        @server_handle = XMLRPC::Server.new(@port)
+        @server_handle = XMLRPC::Server.new(port=@port, host=@ip)
 
         @server_handle.add_handler("send_column_played") do |column_num, turn|
             # puts "got move for #{CMDController.instance.turn}"

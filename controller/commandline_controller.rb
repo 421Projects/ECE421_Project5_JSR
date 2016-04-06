@@ -102,6 +102,7 @@ class CMDController
     def player_id
         return @player_id
     end
+
     def player_id=(arg)
         @player_id = arg
     end
@@ -129,12 +130,13 @@ class CMDController
         end
     end
 
-    def create_hosted_game(game) # No AIs, atm
+    def create_hosted_game(game, given_host="127.0.0.1", given_port=50525) # No AIs, atm
         begin
             gameClazz = Object.const_get(game) # Game
         rescue StandardError
             raise ModeNotSupported
         end
+
         if gameClazz.superclass == Game
             @game = gameClazz.new()
             for i in 2..@game.num_of_players
@@ -143,9 +145,12 @@ class CMDController
             @game_started = true
             @patterns = @game.patterns
             @names = @game.pieces
-            @server = HostGame.new(@game)
-            @server.start_server()
+            changed
+            notify_observers("Message: Starting server on host: #{given_host} "+
+                             "and port #{given_port}.")
+            @server = HostGame.new(game=@game, host=given_host, port=given_port)
 
+            @server.start_server()
             player_name = @names.pop
             player_pattern = @patterns.pop
 
@@ -343,12 +348,19 @@ class CMDController
                     end
                 elsif commands[0].downcase.include? "host"
                     # commands[1] = "Connect4"
+                    given_host = commands[2]
+                    given_port = Integer(commands[3]) rescue nil
                     begin
                         gameClazz = Object.const_get(commands[1]) # Game
                     rescue NameError => ne
                         raise ne, "#{commands[1]} mode not found."
                     end
-                    if gameClazz.superclass == Game
+                    if gameClazz.superclass == Game and
+                         given_host != nil and
+                         given_port != nil
+                        create_hosted_game(commands[1], commands[2], commands[3])
+                        @online_mode = true
+                    elsif gameClazz.superclass == Game
                         create_hosted_game(commands[1])
                         @online_mode = true
                     else

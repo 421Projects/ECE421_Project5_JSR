@@ -151,8 +151,6 @@ class CommandLineView
         puts board_pic
         nil
     end
-
-
 end
 # http://stackoverflow.com/questions/2249310/if-name-main-equivalent-in-ruby
 if __FILE__ == $0
