@@ -41,14 +41,6 @@ class CMDController
         classes_after = ObjectSpace.each_object(Class).to_a
         @modes_loaded = classes_after - classes_before
 
-        begin
-            @mysql_handler = MySQLAdapter.new
-        rescue StandardError => se
-            changed
-            notify_observers("Message: MySQL error, games will not recorded.")
-            notify_observers("Message: #{se.message}.")
-        end
-
         @game_started = false
         @observer_views = []
         @players = []
@@ -273,11 +265,8 @@ class CMDController
         return @game
     end
 
-    Contract Maybe[Nat] => nil
+    Contract Maybe[Int] => nil
     def take_turn(arg)
-        if arg == nil
-            return arg
-        end
         if @player_playing.is_a? LocalAIPlayer
             @player_playing.play(@board)
         elsif @player_playing.is_a? RemoteRealPlayer
@@ -296,6 +285,8 @@ class CMDController
         if @board.analyze(@player_playing.pattern_array)
             # game over, no need to switch turns
             @player_playing.set_win_status(true)
+        elsif @board.all_pieces_played?
+            return nil
         else # switch turns
             @turn = @turn + 1
             @player_playing = @players[@players.index(@player_playing)+1]
@@ -320,11 +311,52 @@ class CMDController
         nil
     end
 
+    def connect_to_mysql()
+        if @mysql_handler == nil
+            @mysql_handler = MySQLAdapter.new
+            for obj in @observer_views
+                @mysql_handler.add_observer(obj)
+            end
+            @mysql_handler.connect()
+        end
+
+        return @mysql_handler.connected?
+    end
+
     def get_hs_table
-        return @mysql_handler.get_table_sorted_by_points
+        if self.connect_to_mysql
+            return @mysql_handler.get_table_sorted_by_points
+        else
+            nil
+        end
+
+        # if @mysql_handler != nil and @mysql_handler.connected?
+        #     return @mysql_handler.get_table_sorted_by_points
+        # else
+        #     if @mysql_handler == nil
+        #         @mysql_handler = MySQLAdapter.new
+        #         if @mysql_handler.connected?
+        #             return @mysql_handler.get_table_sorted_by_points
+        #         else
+        #             nil
+        #         end
+        #     end
+        # end
+        nil
     end
 
     def update_hs_records(player_that_won)
+        if self.connect_to_mysql == false
+            return nil
+        end
+
+        
+        # if @mysql_handler == nil
+        #     @mysql_handler = MySQLAdapter.new
+        #     if @mysql_handler == nil
+        #         return
+        #     end
+        # end
         winning_player = []
         losing_players = []
         for player in @players

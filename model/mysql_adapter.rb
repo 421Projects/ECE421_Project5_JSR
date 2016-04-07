@@ -1,7 +1,9 @@
 require "mysql2"
+require "observer"
 
 class MySQLAdapter
 
+    include Observable
     class PlayerAlreadyExists < StandardError
     end
     class PlayerNotFound < StandardError
@@ -15,12 +17,26 @@ class MySQLAdapter
         @username = username
         @password = password
         @db = db
-        @con = Mysql2::Client.new(:host => @host, :username => @username,
-                                  :password => @password)
-        @con.query("use #{@db}")
 
-        if @con.query("show tables LIKE 'players'").to_a.size < 1
-            @con.query("create table players ( name varchar(255) NOT NULL, wins int, losses int, ties int, points int, PRIMARY KEY (name));")
+    end
+
+    def connected?
+        return @con != nil
+    end
+
+    def connect
+        begin
+            @con = Mysql2::Client.new(:host => @host, :username => @username,
+                                      :password => @password)
+            @con.query("use #{@db}")
+
+            if @con.query("show tables LIKE 'players'").to_a.size < 1
+                @con.query("create table players ( name varchar(255) NOT NULL, wins int, losses int, ties int, points int, PRIMARY KEY (name));")
+            end
+        rescue => se
+            changed
+            notify_observers("Message: MySQL error, games will not recorded. \n" +
+                            "Error Message: #{se.message}.")
         end
     end
 

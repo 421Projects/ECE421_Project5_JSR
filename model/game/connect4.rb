@@ -10,8 +10,8 @@ class Connect4 < Game
         @p2_image = "../../assets/Tile_Red.png"
         @pieces = [@p1_piece, @p2_piece]
 
-        @board_width = 7
-        @board_height = 6
+        @board_width = 3
+        @board_height = 3
 
         # This will hold the images related to each piece:
         # String => Image

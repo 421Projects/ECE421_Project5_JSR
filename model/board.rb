@@ -38,6 +38,21 @@ class Board
         return new_board
     end
 
+    Contract None => Nat
+    def max_piece_count
+        return @height * @width
+    end
+
+    Contract None => Bool
+    def all_pieces_played?
+        if @piece_count == self.max_piece_count
+            changed
+            notify_observers("game tied")
+            return true
+        end
+        return false
+    end
+
     Contract ArrayOf[HashOf[[Nat, Nat], String]] => Bool
 	def analyze(pattern_array)
 		#Looks for all the given patterns in the board                
@@ -88,9 +103,10 @@ class Board
         return true
     end
 
-    Contract Contracts::Nat, String => nil
+    Contract Contracts::Int, String => nil
 	def set_piece(column, piece)
-        raise OutOfBounds unless column <= @width
+        raise OutOfBounds unless column < @width
+        raise OutOfBounds unless column >= 0
 
         row = 0
         while @board[[row,column]] != nil
