@@ -71,8 +71,8 @@ class CommandLineView
     def update(arg)
         if arg.is_a? Player
             puts "#{arg.to_s} has won!"
-            #eval("CMDController.instance.handle_event(['reset'])")
-            CMDController.instance.handle_event(['reset'])
+            # CMDController.instance.handle_event(['record_winner', arg.to_s])
+            CMDController.instance.handle_event(['reset', arg.to_s])
         elsif arg.is_a? Board
             self.pretty_print(arg)
         elsif arg.is_a? String and arg.include? "Message"
@@ -103,6 +103,8 @@ class CommandLineView
         elsif user_input[0].downcase.include? "exit" or
              user_input[0].downcase.include? "quit"
             @running = false
+        elsif user_input[0].downcase.include? "print"
+            self.pretty_print_table(CMDController.instance.get_hs_table)
         else
             if user_input[0].downcase.include? "new" or
               user_input[0].downcase.include? "create"
@@ -141,7 +143,11 @@ class CommandLineView
         board_pic = ""
         for r in (board.height-1).downto(0)
             for c in 0..(board.width-1)
-                board_pic += "[#{board.board[[r,c]]}], "
+                if board.board[[r,c]] == nil
+                    board_pic += "[ ], "
+                else
+                    board_pic += "[#{board.board[[r,c]]}], "
+                end
             end
             board_pic += "\n"
         end

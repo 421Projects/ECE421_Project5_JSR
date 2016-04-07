@@ -24,6 +24,10 @@ class MySQLAdapter
         end
     end
 
+    def get_table_sorted_by_points
+        return @con.query("select * from players order by points desc;")
+    end
+
     def add_player(name)
         if player_exists?(name)
             raise PlayerAlreadyExists, "#{name} already exists in the database."

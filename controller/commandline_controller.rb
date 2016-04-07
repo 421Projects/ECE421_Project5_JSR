@@ -5,6 +5,7 @@ require_relative "../model/player/localPlayer/local_real_player"
 require_relative "../model/player/remotePlayer/remote_real_player"
 require_relative "../model/game/game"
 require_relative "../model/host_game"
+require_relative "../model/mysql_adapter"
 require 'contracts'
 require 'observer'
 require "xmlrpc/server"
@@ -40,8 +41,15 @@ class CMDController
         classes_after = ObjectSpace.each_object(Class).to_a
         @modes_loaded = classes_after - classes_before
 
+        begin
+            @mysql_handler = MySQLAdapter.new
+        rescue StandardError => se
+            changed
+            notify_observers("Message: MySQL error, games will not recorded.")
+            notify_observers("Message: #{se.message}.")
+        end
+
         @game_started = false
-        # @observer_views = observer_views.to_a
         @observer_views = []
         @players = []
         @clients_players = Hash.new
@@ -71,6 +79,15 @@ class CMDController
     Contract None => Bool
     def human_player_playing?
         return @player_playing.is_a? LocalRealPlayer
+    end
+
+    Contract None => Bool
+    def record_game?
+        for player in @players
+            return false if player.instance_of? LocalAIPlayer or
+                player.instance_of? RemoteAIPlayer
+        end
+        return true
     end
 
     Contract None => Bool
@@ -182,9 +199,9 @@ class CMDController
             first_players_index = rand(0..(@players.size-1))
             @player_playing = @players[first_players_index]
             @clients_player_playing_index = first_players_index
-            # puts "(HOST) My players are #{@players}"
-            # puts "(HOST) size #{@players.size}"
-            # puts "(HOST) My player playing is #{@player_playing}"
+        # puts "(HOST) My players are #{@players}"
+        # puts "(HOST) size #{@players.size}"
+        # puts "(HOST) My player playing is #{@player_playing}"
         else
             raise StandardError, "#{gameClazz} not a Game."
         end
@@ -226,13 +243,13 @@ class CMDController
             end
 
             while @players.size < @game.num_of_players #2 # number of players
-                        if (@player_name == nil)
-                            self.changed
-                            self.notify_observers("gimme name!!!")
-                            while (@player_name == nil)
-                                sleep(0.5)
-                            end
-                        end
+                if (@player_name == nil)
+                    self.changed
+                    self.notify_observers("gimme name!!!")
+                    while (@player_name == nil)
+                        sleep(0.5)
+                    end
+                end
                 re = LocalRealPlayer.new(@names.pop, @patterns.pop, @player_name)
                 for obj in @observer_views
                     re.add_observer(obj)
@@ -303,6 +320,40 @@ class CMDController
         nil
     end
 
+    def get_hs_table
+        return @mysql_handler.get_table_sorted_by_points
+    end
+
+    def update_hs_records(player_that_won)
+        winning_player = []
+        losing_players = []
+        for player in @players
+            if @mysql_handler.player_exists?(player.to_s) == false
+                @mysql_handler.add_player(player.to_s)
+            end
+
+            if player.to_s == player_that_won
+                puts "found winning player #{player}"
+                winning_player.push(player.to_s)
+            else
+                losing_players.push(player.to_s)
+            end
+        end
+
+        if winning_player.any?
+            for player in winning_player
+                @mysql_handler.add_win_for_player(player)
+            end
+            for player in losing_players
+                @mysql_handler.add_loss_for_player(player)
+            end
+        else
+            for player in @players
+                @mysql_handler.add_tie_for_player(player)
+            end
+        end
+    end
+
     Contract ArrayOf[String] => nil
     def handle_event(commands)
         case commands
@@ -323,7 +374,7 @@ class CMDController
                         exit(0)
                     end
                 elsif commands[0].downcase.include? "new" or
-                  commands[0].downcase.include? "create"
+                     commands[0].downcase.include? "create"
                     ai_count = Integer(commands[2]) rescue nil
                     begin
                         gameClazz = Object.const_get(commands[1]) # Game
@@ -346,8 +397,8 @@ class CMDController
                         raise ne, "#{commands[1]} mode not found."
                     end
                     if gameClazz.superclass == Game and
-                         given_host != nil and
-                         given_port != nil
+                      given_host != nil and
+                      given_port != nil
                         create_hosted_game(commands[1], commands[2], commands[3])
                         @online_mode = true
                     elsif gameClazz.superclass == Game
@@ -398,6 +449,16 @@ class CMDController
 
                 elsif commands[0].downcase.include? "restart" or
                      commands[0].downcase.include? "reset"
+                    if self.record_game?
+                        if self.online_mode
+                            if self.hosting?
+                                self.update_hs_records(commands[1])
+                            end
+                        else
+                            self.update_hs_records(commands[1])
+                        end
+                    end
+
                     @players = []
                     @board = nil
                     @player_playing = nil
