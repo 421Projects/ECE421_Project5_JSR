@@ -50,12 +50,10 @@ class CMDController
         @player_playing = nil
         @clients_player_playing_index = nil
         @AI_players = 0
-        @previous_play = -1
         # http://docs.ruby-lang.org/en/2.0.0/Hash.html
         @game_history = Hash.new(-1)
         @turn = 1
         @online_mode = false
-        @player_id = 1 # starting with host player
         @player_name = nil
     end
 
@@ -97,14 +95,6 @@ class CMDController
 
     def get_server
         return @server
-    end
-
-    def player_id
-        return @player_id
-    end
-
-    def player_id=(arg)
-        @player_id = arg
     end
 
     def add_remote_player(player_decided_name)
@@ -273,7 +263,7 @@ class CMDController
         if @player_playing.is_a? LocalAIPlayer
             @player_playing.play(@board)
         elsif @player_playing.is_a? RemoteRealPlayer
-            @player_playing.play(@board, @previous_play)
+            @player_playing.play(@board)
         else
             @board.set_piece(arg, @player_playing.piece)
             if @online_mode
@@ -283,7 +273,6 @@ class CMDController
                     get_server.server_handle.call("send_column_played", arg, @turn)
                 end
             end
-            @previous_play = arg
         end
 
         if @board.analyze(@player_playing.pattern_array)

@@ -138,7 +138,6 @@ class CommandLineView
 
     Contract Board => nil
     def pretty_print(board)
-        puts board.board
         board_pic = ""
         for r in (board.height-1).downto(0)
             for c in 0..(board.width-1)

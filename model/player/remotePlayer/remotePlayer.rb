@@ -10,7 +10,7 @@ class RemotePlayer < Player
 
 
     @move_made = -1
-    def get_move(arg)
+    def get_move
         if CMDController.instance.hosting?
             return CMDController.instance.get_server.get_move
         else
