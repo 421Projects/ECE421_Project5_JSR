@@ -55,12 +55,13 @@ class CMDController
         @turn = 1
         @online_mode = false
         @player_name = nil
+        @player_id = 1
     end
 
     attr_accessor :modes_loaded, :game, :game_started, :players, :clients_players,
                   :player_playing, :clients_player_playing_index,
                   :board, :clients_board, :game_history, :turn, :online_mode,
-                  :observer_views
+                  :observer_views, :player_id
 
     Contract None => String
     def get_player_playings_name
