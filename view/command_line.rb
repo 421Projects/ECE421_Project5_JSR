@@ -21,7 +21,6 @@ class CommandLineView
         puts "Mode files loaded are:"
         puts CMDController.instance.modes_loaded
 
-
         puts "--------------------------------------------"
         puts "What is the player's name?"
         # http://stackoverflow.com/questions/6085518/what-is-the-easiest-way-to-push-an-element-to-the-beginning-of-the-array
@@ -143,7 +142,6 @@ class CommandLineView
         board_pic = ""
         for r in (board.height-1).downto(0)
             for c in 0..(board.width-1)
-                # board_pic += "(#{r},#{c})[#{board.get_player_on_pos(r,c).piece}], "
                 board_pic += "[#{board.board[[r,c]]}], "
             end
             board_pic += "\n"
@@ -153,14 +151,13 @@ class CommandLineView
     end
 
     def pretty_print_table(table)
+        # http://stackoverflow.com/questions/1087658/nicely-formatting-output-to-console-specifying-number-of-tabs
         puts "______________________________________________"
         puts "|Name    |Wins    |Losses  |Ties    |Points  |"
         puts "|........|........|........|........|........|"
         for row in table
             puts "|%8s|%8s|%8s|%8s|%8s|" % [row['name'], row['wins'], row['losses'], row['ties'],
                                           row['points']]
-            #puts "#{row['name']} | #{row['wins']} " +
-            #     "| #{row['losses']} | #{row['ties']} | #{row['points']}"
         end
         puts "|________|________|________|________|________|"
     end
