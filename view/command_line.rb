@@ -128,7 +128,7 @@ class CommandLineView
             if table == nil
                 puts "MySql not connected."
             else
-                self.pretty_print_table()
+                self.pretty_print_table(table)
             end
         else
             if user_input[0].downcase.include? "new" or

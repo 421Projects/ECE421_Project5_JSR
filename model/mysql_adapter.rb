@@ -8,6 +8,8 @@ class MySQLAdapter
     end
     class PlayerNotFound < StandardError
     end
+    class NotConnected < StandardError
+    end
 
     def initialize(host="127.0.0.1", port=8080,
                    username="admin3iQCfbc", password="2nUhtK3IX5RT",
@@ -41,7 +43,9 @@ class MySQLAdapter
     end
 
     def get_table_sorted_by_points
-        return @con.query("select * from players order by points desc;")
+        check_connection {
+            return @con.query("select * from players order by points desc;")
+        }
     end
 
     def add_player(name)
@@ -53,18 +57,18 @@ class MySQLAdapter
     end
 
     def delete_player(name)
-        if player_exists?(name)
+        check_and_run_query(name) {
             @con.query("delete from players where name='#{name}';")
-        else
-            raise PlayerNotFound, "#{name} not found in the database."
-        end
+        }
     end
 
     def player_exists?(name)
-        @con.query("select * from players where name='#{name}';").each do |row|
-            return true
-        end
-        return false
+        check_connection {
+            @con.query("select * from players where name='#{name}';").each do |row|
+                return true
+            end
+            return false
+        }
     end
 
     def get_wins_for_player(name)
@@ -123,9 +127,17 @@ class MySQLAdapter
         }
     end
 
+    def check_connection
+        if @con != nil
+            yield
+        else
+            raise NotConnected, "No connection to database."
+        end
+    end
+
     def check_and_run_query(name)
         # http://www.tutorialspoint.com/ruby/ruby_blocks.htm
-        if player_exists?(name)
+        if @con != nil and player_exists?(name)
             yield
         else
             raise PlayerNotFound, "#{name} not found in the database."
