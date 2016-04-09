@@ -89,8 +89,10 @@ class HostGame
                            CMDController.instance.game_started,
                            CMDController.instance.clients_players[this_players_id],
                            CMDController.instance.clients_player_playing_index,
-                           CMDController.instance.clients_board
+                           CMDController.instance.clients_board,
+                           CMDController.instance.turn
                        ])
+
         end
 
         @server_handle.set_default_handler do |name, *args|

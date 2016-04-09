@@ -458,7 +458,7 @@ class CMDController
                             end
                         end
                         @server = HostGame.new(game=@game, host=given_host, port=given_port)
-                        @game, @game_started, @players, players_index, @board = @server.join_server(@player_name)
+                        @game, @game_started, @players, players_index, @board, @turn = @server.join_server(@player_name)
                         @player_playing = @players[players_index]
                         @player_name = nil
                         # puts "My players are #{@players}"
