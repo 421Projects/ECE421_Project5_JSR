@@ -33,10 +33,10 @@ class Player
         nil
     end
 
-    Contract None => String
-    def to_s
-        return @name
-    end
+   Contract None => String
+   def to_s
+       return @name
+   end
 
     #Contract Board => Any
     def play(board_to_play)
