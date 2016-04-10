@@ -63,6 +63,48 @@ class HostGame
             true
         end
 
+        @server_handle.add_handler("get_save_request") do
+            puts "got save request"
+            puts "players #{@game.num_of_players}"
+            puts "history #{CMDController.instance.game_history}"
+            puts "turn #{CMDController.instance.turn}, starting wait... server side"
+            puts "#{CMDController.instance.turn..(CMDController.instance.turn+@game.num_of_players-1)}"
+            if CMDController.instance.turn_which_save_was_requested == -1
+                start_turn = CMDController.instance.turn
+                CMDController.instance.turn_which_save_was_requested = start_turn
+            else
+                start_turn = CMDController.instance.turn_which_save_was_requested
+            end
+            puts "#{CMDController.instance.turn_which_save_was_requested}"
+            j = 0
+            while j < @game.num_of_players
+                j = 0
+                for turn in start_turn..(start_turn+@game.num_of_players-1)
+                    if CMDController.instance.game_history[turn] != -1
+                        j += 1
+                    end
+                end
+                puts "currently, j = #{j} and players #{@game.num_of_players} and range #{start_turn..(start_turn+@game.num_of_players-1)} and history #{CMDController.instance.game_history}"
+                sleep(1)
+            end
+            puts "returning server side"
+            puts "players #{@game.num_of_players}"
+            puts "turn #{CMDController.instance.turn}"
+            ret_val = 10
+            puts "calcing for client"
+            for turn in start_turn..(start_turn+@game.num_of_players-1)
+                puts "savers #{CMDController.instance.save_requests_received}"
+                if CMDController.instance.game_history[turn] >= 0
+                    puts "found objector"
+                    ret_val = -11
+                end
+            end
+            if ret_val < 0
+                CMDController.instance.turn_which_save_was_requested = -1
+            end
+            ret_val
+        end
+
         @server_handle.add_handler("get_column_played") do |turn|
             while CMDController.instance.game_history[turn] == -1
                 # puts "client waiting for host to move #{turn}"

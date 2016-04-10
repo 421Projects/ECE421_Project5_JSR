@@ -6,6 +6,7 @@ require_relative "../model/player/remotePlayer/remote_real_player"
 require_relative "../model/game/game"
 require_relative "../model/host_game"
 require_relative "../model/mysql_adapter"
+require_relative "../model/local_file_storage"
 require 'contracts'
 require 'observer'
 require "xmlrpc/server"
@@ -56,12 +57,16 @@ class CMDController
         @online_mode = false
         @player_name = nil
         @player_id = 1
+        @save_requests_received = Hash.new(0)
+        @turn_which_save_was_requested = -1
+        @continuing_game = false
     end
 
     attr_accessor :modes_loaded, :game, :game_started, :players, :clients_players,
                   :player_playing, :clients_player_playing_index,
                   :board, :clients_board, :game_history, :turn, :online_mode,
-                  :observer_views, :player_id
+                  :observer_views, :player_id, :save_requests_received,
+                  :continuing_game, :turn_which_save_was_requested
 
     Contract None => String
     def get_player_playings_name
@@ -173,7 +178,7 @@ class CMDController
                 @clients_players[i].push(re)
             end
 
-            @player_name = nil
+            # @player_name = nil
 
             while @players.size < @game.num_of_players #2 # number of players
                 # puts "waiting... for players"
@@ -181,8 +186,23 @@ class CMDController
             end
             # puts "got players"
 
-            @board = Board.new(@game.board_width, @game.board_height)
-            @clients_board = Board.new(@game.board_width, @game.board_height)
+            storage_handler = LocalFileStorage.new("#{@player_name}_game_records.yml")
+            key = "|#{@game.title}|"
+            for player in @players
+                key += "#{player}|"
+            end
+            if storage_handler.load(key) and
+              gets.chomp.include? "y"
+                game_state = storage_handler.load(key)
+
+                @board = game_state['board']
+                @clients_board = @board.copy
+                @turn = game_state['turn']
+            else
+                puts "nothing found or you sayd no"
+                @board = Board.new(@game.board_width, @game.board_height)
+                @clients_board = Board.new(@game.board_width, @game.board_height)
+            end
             for obj in @observer_views
                 @board.add_observer(obj)
             end
@@ -248,7 +268,7 @@ class CMDController
                 end
                 @players.push(re)
 
-                @player_name = nil
+                #@player_name = nil
             end
 
             @board = Board.new(@game.board_width, @game.board_height)
@@ -272,7 +292,10 @@ class CMDController
         elsif @player_playing.is_a? RemoteRealPlayer
             @player_playing.play(@board)
         else
-            @board.set_piece(arg, @player_playing.piece)
+            @player_playing.last_column_played = arg
+            if arg != -2
+                @board.set_piece(arg, @player_playing.piece)
+            end
             if @online_mode
                 if self.hosting?
                     @server.send_move(arg)
@@ -282,6 +305,9 @@ class CMDController
             end
         end
 
+        puts "arg is #{arg}"
+        sleep(1)
+        puts "last_column played = #{@player_playing.last_column_played}"
         if @board.analyze(@player_playing.pattern_array)
             # game over, no need to switch turns
             @player_playing.set_win_status(true)
@@ -301,7 +327,7 @@ class CMDController
     end
 
     Contract None => Board
-    def et_board()
+    def get_board()
         return @board
     end
 
@@ -350,7 +376,7 @@ class CMDController
             return nil
         end
 
-        
+
         # if @mysql_handler == nil
         #     @mysql_handler = MySQLAdapter.new
         #     if @mysql_handler == nil
@@ -393,7 +419,63 @@ class CMDController
             if commands[0].respond_to?("to_i") and
               commands[0].to_i.to_s == commands[0] and
               @game_started
-                take_turn(Integer(commands[0]))
+                take_turn(commands[0].to_i)
+                if commands[0].to_i == -2
+                    if self.hosting?
+                        if @turn_which_save_was_requested == -1
+                            start_turn = @turn - 1
+                            @turn_which_save_was_requested = start_turn
+                        else
+                            start_turn = @turn_which_save_was_requested
+                        end
+                        j = 0
+                        while j < @game.num_of_players
+                            j = 0
+                            for turn in start_turn..(start_turn+@game.num_of_players-1)
+                                if CMDController.instance.game_history[turn] != -1
+                                    j += 1
+                                end
+                            end
+                            puts "didnt make it, j = #{j} and players #{@game.num_of_players} and range #{start_turn..(start_turn+@game.num_of_players-1)} and history #{CMDController.instance.game_history}"
+                            sleep(1)
+                        end
+                        puts "returning"
+                        puts "players #{@game.num_of_players}"
+                        puts "savers #{CMDController.instance.save_requests_received}"
+                        puts "turn #{CMDController.instance.turn}"
+                        ret_val = 10
+                        puts "calcing for host"
+                        for turn in start_turn..(start_turn+@game.num_of_players-1)
+                            puts "savers #{CMDController.instance.save_requests_received}"
+                            if CMDController.instance.game_history[turn] >= 0
+                                puts "found objector"
+                                ret_val = -11
+                            end
+                        end
+
+                        if ret_val > 0
+                            self.handle_event(["save"])
+                            puts "saving game"
+                        else
+                            puts "save request rejected!"
+                            @turn_which_save_was_requested = -1
+                        end
+                    else
+                        begin
+                            ret_val = get_server.server_handle.call("get_save_request")
+                            if ret_val > 0
+                                self.handle_event(["save"])
+                                puts "saving game"
+                            else
+                                puts "save request rejected!"
+                                @turn_which_save_was_requested = -1
+                        end
+                        rescue Errno::ECONNRESET
+                            self.handle_event(["save"])
+                            puts "saving game"
+                        end
+                    end
+                end
             elsif commands[0].respond_to?("downcase")
                 if commands[0].downcase.include? "name"
                     if (commands[1].size <= 10)
@@ -421,8 +503,11 @@ class CMDController
                     end
                 elsif commands[0].downcase.include? "host"
                     # commands[1] = "Connect4"
-                    given_host = commands[2]
-                    given_port = Integer(commands[3]) rescue nil
+                    # given_host = commands[2]
+                    # given_port = Integer(commands[3]) rescue nil
+                    given_host = "127.0.0.1"
+                    given_port = 50525
+                    commands[1] = "Connect4"
                     begin
                         gameClazz = Object.const_get(commands[1]) # Game
                     rescue NameError => ne
@@ -431,7 +516,7 @@ class CMDController
                     if gameClazz.superclass == Game and
                       given_host != nil and
                       given_port != nil
-                        create_hosted_game(commands[1], commands[2], commands[3])
+                        create_hosted_game(commands[1], given_host, given_port)
                         @online_mode = true
                     elsif gameClazz.superclass == Game
                         create_hosted_game(commands[1])
@@ -441,8 +526,11 @@ class CMDController
                     end
                 elsif commands[0].downcase.include? "join"
                     # commands[1] = "Connect4"
-                    given_host = commands[2]
-                    given_port = Integer(commands[3]) rescue nil
+                    # given_host = commands[2]
+                    # given_port = Integer(commands[3]) rescue nil
+                    given_host = "127.0.0.1"
+                    given_port = 50525
+                    commands[1] = "Connect4"
                     begin
                         gameClazz = Object.const_get(commands[1]) # Game
                     rescue StandardError
@@ -460,7 +548,7 @@ class CMDController
                         @server = HostGame.new(game=@game, host=given_host, port=given_port)
                         @game, @game_started, @players, players_index, @board, @turn = @server.join_server(@player_name)
                         @player_playing = @players[players_index]
-                        @player_name = nil
+                        # @player_name = nil
                         # puts "My players are #{@players}"
                         # puts "size #{@players.size}"
                         # puts "My player playing is #{@player_playing}"
@@ -478,10 +566,35 @@ class CMDController
                         raise StandardError, "#{gameClazz} not a Game."
                     end
 
+                elsif commands[0].downcase.include? "save"
+                    @clients_players[1] = @players
+                    key = "|#{@game.title}|"
+                    for player in @players
+                        key += "#{player}|"
+                    end
+                    game_state = {
+                        "board" => @board,
+                        "turn" => @turn
+                    }
+                    storage_handler = LocalFileStorage.new("#{@player_name}_game_records.yml")
+                    storage_handler.save(key,game_state)
+                    self.handle_event(['reset'])
+
+                elsif commands[0].downcase.include? "continue"
+                    @continuing_game = true
+                # key = "|"
+                # for player in @players
+                #     key += "#{player}|"
+                # end
+                # storage_handler = LocalFileStorage.new("#{@player_name}_game_records.yml")
+                # game_state = storage_handler.load(key)
+
+                # @board = game_state['board']
+                # @turn = game_state['turn']
 
                 elsif commands[0].downcase.include? "restart" or
                      commands[0].downcase.include? "reset"
-                    if self.record_game?
+                    if self.record_game? and commands[1] != nil
                         if self.online_mode
                             if self.hosting?
                                 self.update_hs_records(commands[1])

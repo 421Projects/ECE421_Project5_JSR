@@ -98,9 +98,13 @@ class CommandLineView
             puts "What is the player's name?"
             # http://stackoverflow.com/questions/6085518/what-is-the-easiest-way-to-push-an-element-to-the-beginning-of-the-array
             parse_command(get_command().unshift("name"))
+        elsif arg.is_a? String and arg.include? "continue"
+            puts "Saved game found. Continue saved game? (y/n)"
+            # http://stackoverflow.com/questions/6085518/what-is-the-easiest-way-to-push-an-element-to-the-beginning-of-the-array
+            parse_command(get_command().unshift("name"))
         elsif arg.is_a? String and arg.include? "tied"
             puts "Game Tied!"
-            CMDController.instance.handle_event(['reset'])
+            CMDController.instance.handle_event(['reset', 'tie'])
         else
             puts "#{arg} not recognized."
         end

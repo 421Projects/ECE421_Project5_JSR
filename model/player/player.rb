@@ -10,6 +10,7 @@ class Player
     include Contracts::Invariants
 
     attr_reader :pattern_array, :piece, :name, :won
+    attr_accessor :last_column_played
 
     invariant(@piece) {@piece == @original_piece}
 
@@ -20,6 +21,7 @@ class Player
         @name = name
         @pattern_array = patterns
         @won = false
+        @last_column_played = -1
         nil
     end
 
