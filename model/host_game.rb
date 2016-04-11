@@ -43,9 +43,14 @@ class HostGame
     end
 
     def get_move()
+        counter = 0
         while CMDController.instance.game_history[CMDController.instance.turn] == -1
             # puts "host waiting for client to move for #{CMDController.instance.turn}"
             sleep(1)
+            counter += 1
+            if counter > 60
+                exit(0)
+            end
         end
         CMDController.instance.game_history[CMDController.instance.turn]
     end
