@@ -200,6 +200,7 @@ class CMDController
                 puts "Saved game found. Do you want to continue it?"
                 if gets.chomp.include? "y"
                     game_state = storage_handler.load(key)
+                    storage_handler.delete(key)
 
                     @board = game_state['board']
                     piece_order = game_state['piece_order']
@@ -289,17 +290,55 @@ class CMDController
                 end
                 @players.push(re)
 
-                #@player_name = nil
+                @player_name = nil
+            end
+            puts "done getting name #{@players}"
+
+            @board = nil
+            storage_handler = LocalFileStorage.new #("#{@player_name}_game_records.yml")
+            @players.sort! {|p1,p2| p1.to_s <=> p2.to_s}
+            for key, value in @clients_players
+                @clients_players[key] = value.sort {|p1,p2| p1.to_s <=> p2.to_s}
+            end
+            key = "|#{@game.title}|"
+            for player in @players
+                key += "#{player}|"
+            end
+            if storage_handler.load(key)
+                puts "Saved game found. Do you want to continue it?"
+                if gets.chomp.include? "y"
+                    game_state = storage_handler.load(key)
+                    storage_handler.delete(key)
+
+                    @board = game_state['board']
+                    piece_order = game_state['piece_order']
+                    for player, piece in @players.zip(piece_order)
+                        player.piece = piece
+                    end
+                    for key, value in @clients_players
+                        for player, piece in value.zip(piece_order)
+                            player.piece = piece
+                        end
+                        @clients_players[key] = value
+                    end
+                    @board.delete_observers()
+                    @turn = game_state['turn']
+
+                    first_players_index = @turn % @game.num_of_players
+                end
+            end
+            if @board == nil
+                puts "nothing found or you sayd no"
+                @board = Board.new(@game.board_width, @game.board_height)
+                @clients_board = Board.new(@game.board_width, @game.board_height)
+                first_players_index = 1 # rand(0..(@players.size-1))
             end
 
-            @board = Board.new(@game.board_width, @game.board_height)
             for obj in @observer_views
                 @board.add_observer(obj)
             end
 
-            if @player_playing == nil
-                @player_playing = @players.shuffle[0]
-            end
+            @player_playing = @players[first_players_index]
         else
             raise StandardError, "#{gameClazz} not a Game."
         end
@@ -327,7 +366,6 @@ class CMDController
         end
 
         puts "arg is #{arg}"
-        sleep(1)
         puts "last_column played = #{@player_playing.last_column_played}"
         if @board.analyze(@player_playing.pattern_array)
             # game over, no need to switch turns
@@ -442,48 +480,39 @@ class CMDController
               @game_started
                 take_turn(commands[0].to_i)
                 if commands[0].to_i == -2
-                    if self.hosting?
-                        if @turn_which_save_was_requested == -1
-                            start_turn = @turn - 1
-                            @turn_which_save_was_requested = start_turn
-                        else
-                            start_turn = @turn_which_save_was_requested
-                        end
-                        j = 0
-                        while j < @game.num_of_players
+                    if self.online_mode
+                        if self.hosting?
+                            if @turn_which_save_was_requested == -1
+                                start_turn = @turn - 1
+                                @turn_which_save_was_requested = start_turn
+                            else
+                                start_turn = @turn_which_save_was_requested
+                            end
                             j = 0
+                            while j < @game.num_of_players
+                                j = 0
+                                for turn in start_turn..(start_turn+@game.num_of_players-1)
+                                    if CMDController.instance.game_history[turn] != -1
+                                        j += 1
+                                    end
+                                end
+                                puts "didnt make it, j = #{j} and players #{@game.num_of_players} and range #{start_turn..(start_turn+@game.num_of_players-1)} and history #{CMDController.instance.game_history}"
+                                sleep(1)
+                            end
+                            puts "returning"
+                            puts "players #{@game.num_of_players}"
+                            puts "savers #{CMDController.instance.save_requests_received}"
+                            puts "turn #{CMDController.instance.turn}"
+                            ret_val = 10
+                            puts "calcing for host"
                             for turn in start_turn..(start_turn+@game.num_of_players-1)
-                                if CMDController.instance.game_history[turn] != -1
-                                    j += 1
+                                puts "savers #{CMDController.instance.save_requests_received}"
+                                if CMDController.instance.game_history[turn] >= 0
+                                    puts "found objector"
+                                    ret_val = -11
                                 end
                             end
-                            puts "didnt make it, j = #{j} and players #{@game.num_of_players} and range #{start_turn..(start_turn+@game.num_of_players-1)} and history #{CMDController.instance.game_history}"
-                            sleep(1)
-                        end
-                        puts "returning"
-                        puts "players #{@game.num_of_players}"
-                        puts "savers #{CMDController.instance.save_requests_received}"
-                        puts "turn #{CMDController.instance.turn}"
-                        ret_val = 10
-                        puts "calcing for host"
-                        for turn in start_turn..(start_turn+@game.num_of_players-1)
-                            puts "savers #{CMDController.instance.save_requests_received}"
-                            if CMDController.instance.game_history[turn] >= 0
-                                puts "found objector"
-                                ret_val = -11
-                            end
-                        end
 
-                        if ret_val > 0
-                            self.handle_event(["save"])
-                            puts "saving game"
-                        else
-                            puts "save request rejected!"
-                            @turn_which_save_was_requested = -1
-                        end
-                    else
-                        begin
-                            ret_val = get_server.server_handle.call("get_save_request")
                             if ret_val > 0
                                 self.handle_event(["save"])
                                 puts "saving game"
@@ -491,10 +520,25 @@ class CMDController
                                 puts "save request rejected!"
                                 @turn_which_save_was_requested = -1
                             end
-                        rescue Errno::ECONNRESET
-                            self.handle_event(["save"])
-                            puts "saving game"
+                        else
+                            begin
+                                ret_val = get_server.server_handle.call("get_save_request")
+                                if ret_val > 0
+                                    self.handle_event(["save"])
+                                    puts "saving game"
+                                else
+                                    puts "save request rejected!"
+                                    @turn_which_save_was_requested = -1
+                                end
+                            rescue Errno::ECONNRESET
+                                self.handle_event(["save"])
+                                puts "saving game"
+                            end
                         end
+                    else
+                        @turn = @turn - 1
+                        self.handle_event(["save"])
+                        puts "saving local game"
                     end
                 end
             elsif commands[0].respond_to?("downcase")
@@ -597,6 +641,7 @@ class CMDController
                     for p in @players
                         piece_order.push(p.piece)
                     end
+
                     game_state = {
                         "board" => @board,
                         "turn" => @turn,
