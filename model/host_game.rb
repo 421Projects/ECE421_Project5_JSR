@@ -19,7 +19,7 @@ class HostGame
     # http://www.ingate.com/files/422/fwmanual-en/xa10285.html
     invariant(@port) {@port.to_i > 1024 && @port.to_i < 65535}
 
-    #Contract Game, Nat => nil
+    Contract Game, String, Nat, String => nil
     def initialize(game=Connect4.new, ip="127.0.0.1", port=8080, url_extension="/RPC2")
         @game = game
         @port = port
@@ -32,6 +32,7 @@ class HostGame
         nil
     end
 
+    Contract None => Bool
     def hosting?
         return @server_handle.is_a? XMLRPC::Server
     end
@@ -146,7 +147,7 @@ class HostGame
         nil
     end
 
-    #Contract None => nil
+    Contract String => Any
     def join_server(player_name)
         # http://ruby-doc.org/stdlib-2.0.0/libdoc/xmlrpc/rdoc/XMLRPC/Server.html
         # add handler for receiving piece placements from connected clients
