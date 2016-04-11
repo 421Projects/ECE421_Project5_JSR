@@ -186,29 +186,50 @@ class CMDController
             end
             # puts "got players"
 
-            storage_handler = LocalFileStorage.new("#{@player_name}_game_records.yml")
+            @board = nil
+            storage_handler = LocalFileStorage.new #("#{@player_name}_game_records.yml")
+            @players.sort! {|p1,p2| p1.to_s <=> p2.to_s}
+            for key, value in @clients_players
+                @clients_players[key] = value.sort {|p1,p2| p1.to_s <=> p2.to_s}
+            end
             key = "|#{@game.title}|"
             for player in @players
                 key += "#{player}|"
             end
-            if storage_handler.load(key) and
-              gets.chomp.include? "y"
-                game_state = storage_handler.load(key)
+            if storage_handler.load(key)
+                puts "Saved game found. Do you want to continue it?"
+                if gets.chomp.include? "y"
+                    game_state = storage_handler.load(key)
 
-                @board = game_state['board']
-                @clients_board = @board.copy
-                @turn = game_state['turn']
-            else
+                    @board = game_state['board']
+                    piece_order = game_state['piece_order']
+                    for player, piece in @players.zip(piece_order)
+                        player.piece = piece
+                    end
+                    for key, value in @clients_players
+                        for player, piece in value.zip(piece_order)
+                            player.piece = piece
+                        end
+                        @clients_players[key] = value
+                    end
+                    @board.delete_observers()
+                    @clients_board = @board.copy
+                    @clients_board.delete_observers()
+                    @turn = game_state['turn']
+
+                    first_players_index = @turn % @game.num_of_players
+                end
+            end
+            if @board == nil
                 puts "nothing found or you sayd no"
                 @board = Board.new(@game.board_width, @game.board_height)
                 @clients_board = Board.new(@game.board_width, @game.board_height)
+                first_players_index = 1 # rand(0..(@players.size-1))
             end
             for obj in @observer_views
                 @board.add_observer(obj)
             end
 
-            # http://stackoverflow.com/questions/4395095/how-to-generate-a-random-number-between-a-and-b-in-ruby
-            first_players_index = rand(0..(@players.size-1))
             @player_playing = @players[first_players_index]
             @clients_player_playing_index = first_players_index
         # puts "(HOST) My players are #{@players}"
@@ -469,7 +490,7 @@ class CMDController
                             else
                                 puts "save request rejected!"
                                 @turn_which_save_was_requested = -1
-                        end
+                            end
                         rescue Errno::ECONNRESET
                             self.handle_event(["save"])
                             puts "saving game"
@@ -572,11 +593,16 @@ class CMDController
                     for player in @players
                         key += "#{player}|"
                     end
+                    piece_order = []
+                    for p in @players
+                        piece_order.push(p.piece)
+                    end
                     game_state = {
                         "board" => @board,
-                        "turn" => @turn
+                        "turn" => @turn,
+                        "piece_order" => piece_order
                     }
-                    storage_handler = LocalFileStorage.new("#{@player_name}_game_records.yml")
+                    storage_handler = LocalFileStorage.new #("#{@player_name}_game_records.yml")
                     storage_handler.save(key,game_state)
                     self.handle_event(['reset'])
 

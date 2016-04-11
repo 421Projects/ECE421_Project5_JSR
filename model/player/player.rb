@@ -9,8 +9,8 @@ class Player
     include Contracts::Builtin
     include Contracts::Invariants
 
-    attr_reader :pattern_array, :piece, :name, :won
-    attr_accessor :last_column_played
+    attr_reader :pattern_array, :name, :won
+    attr_accessor :last_column_played, :piece
 
     invariant(@piece) {@piece == @original_piece}
 
