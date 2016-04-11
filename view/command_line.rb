@@ -122,7 +122,8 @@ class CommandLineView
                  "restart: restart game \n" +
                  "modes: list modes\n" +
                  "host: host a new game. Ex. host <mode name> <ip> <port> \n" +
-                 "join: join a hosted game. Ex. join <mode name> <ip> <port>\n"
+                 "join: join a hosted game. Ex. join <mode name> <ip> <port>\n" +
+                 "print: prints the recorded wins and losses from the databases. (Sorted by points.) \n"
         elsif user_input[0].downcase.include? "mode"
             puts "Mode files loaded are:"
             puts CMDController.instance.modes_loaded
