@@ -222,7 +222,8 @@ class CMDController
                 end
             end
             if @board == nil
-                puts "nothing found or you sayd no"
+                # puts "nothing found or you sayd no"
+                puts "Starting new game"
                 @board = Board.new(@game.board_width, @game.board_height)
                 @clients_board = Board.new(@game.board_width, @game.board_height)
                 first_players_index = 1 # rand(0..(@players.size-1))
@@ -292,7 +293,7 @@ class CMDController
 
                 @player_name = nil
             end
-            puts "done getting name #{@players}"
+            # puts "done getting name #{@players}"
 
             @board = nil
             storage_handler = LocalFileStorage.new #("#{@player_name}_game_records.yml")
@@ -365,8 +366,8 @@ class CMDController
             end
         end
 
-        puts "arg is #{arg}"
-        puts "last_column played = #{@player_playing.last_column_played}"
+        # puts "arg is #{arg}"
+        # puts "last_column played = #{@player_playing.last_column_played}"
         if @player_playing.is_a? RemoteRealPlayer and
            @player_playing.last_column_played == -2
             puts "Partner wishes to save game. Type in -2 to save or -3 to reject."
@@ -500,24 +501,25 @@ class CMDController
                                         j += 1
                                     end
                                 end
-                                puts "didnt make it, j = #{j} and players #{@game.num_of_players} and range #{start_turn..(start_turn+@game.num_of_players-1)} and history #{CMDController.instance.game_history}"
+                                # puts "didnt make it, j = #{j} and players #{@game.num_of_players} and range #{start_turn..(start_turn+@game.num_of_players-1)} and history #{CMDController.instance.game_history}"
                                 sleep(1)
                             end
-                            puts "returning"
-                            puts "players #{@game.num_of_players}"
-                            puts "savers #{CMDController.instance.save_requests_received}"
-                            puts "turn #{CMDController.instance.turn}"
+                            # puts "returning"
+                            # puts "players #{@game.num_of_players}"
+                            # puts "savers #{CMDController.instance.save_requests_received}"
+                            # puts "turn #{CMDController.instance.turn}"
                             ret_val = 10
-                            puts "calcing for host"
+                            # puts "calcing for host"
                             for turn in start_turn..(start_turn+@game.num_of_players-1)
                                 puts "savers #{CMDController.instance.save_requests_received}"
-                                if CMDController.instance.game_history[turn] >= -3
-                                    puts "found objector"
+                                if CMDController.instance.game_history[turn] == -3
+                                    # puts "found objector"
                                     ret_val = -11
                                 end
                             end
 
                             if ret_val > 0
+                                @turn = @turn_which_save_was_requested
                                 self.handle_event(["save"])
                                 puts "saving game"
                             else
@@ -528,6 +530,7 @@ class CMDController
                             begin
                                 ret_val = get_server.server_handle.call("get_save_request")
                                 if ret_val > 0
+                                    @turn = @turn_which_save_was_requested
                                     self.handle_event(["save"])
                                     puts "saving game"
                                 else
@@ -535,6 +538,7 @@ class CMDController
                                     @turn_which_save_was_requested = -1
                                 end
                             rescue Errno::ECONNRESET
+                                @turn = @turn_which_save_was_requested
                                 self.handle_event(["save"])
                                 puts "saving game"
                             end

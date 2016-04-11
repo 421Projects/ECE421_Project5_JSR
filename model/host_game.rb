@@ -65,18 +65,18 @@ class HostGame
         end
 
         @server_handle.add_handler("get_save_request") do
-            puts "got save request"
-            puts "players #{@game.num_of_players}"
-            puts "history #{CMDController.instance.game_history}"
-            puts "turn #{CMDController.instance.turn}, starting wait... server side"
-            puts "#{CMDController.instance.turn..(CMDController.instance.turn+@game.num_of_players-1)}"
+            # puts "got save request"
+            # puts "players #{@game.num_of_players}"
+            # puts "history #{CMDController.instance.game_history}"
+            # puts "turn #{CMDController.instance.turn}, starting wait... server side"
+            # puts "#{CMDController.instance.turn..(CMDController.instance.turn+@game.num_of_players-1)}"
             if CMDController.instance.turn_which_save_was_requested == -1
                 start_turn = CMDController.instance.turn
                 CMDController.instance.turn_which_save_was_requested = start_turn
             else
                 start_turn = CMDController.instance.turn_which_save_was_requested
             end
-            puts "#{CMDController.instance.turn_which_save_was_requested}"
+            # puts "#{CMDController.instance.turn_which_save_was_requested}"
             j = 0
             while j < @game.num_of_players
                 j = 0
@@ -85,18 +85,18 @@ class HostGame
                         j += 1
                     end
                 end
-                puts "currently, j = #{j} and players #{@game.num_of_players} and range #{start_turn..(start_turn+@game.num_of_players-1)} and history #{CMDController.instance.game_history}"
+                # puts "currently, j = #{j} and players #{@game.num_of_players} and range #{start_turn..(start_turn+@game.num_of_players-1)} and history #{CMDController.instance.game_history}"
                 sleep(1)
             end
-            puts "returning server side"
-            puts "players #{@game.num_of_players}"
-            puts "turn #{CMDController.instance.turn}"
+            # puts "returning server side"
+            # puts "players #{@game.num_of_players}"
+            #puts "turn #{CMDController.instance.turn}"
             ret_val = 10
-            puts "calcing for client"
+            # puts "calcing for client"
             for turn in start_turn..(start_turn+@game.num_of_players-1)
-                puts "savers #{CMDController.instance.save_requests_received}"
+                # puts "savers #{CMDController.instance.save_requests_received}"
                 if CMDController.instance.game_history[turn] == -3
-                    puts "found objector"
+                    # puts "found objector"
                     ret_val = -11
                 end
             end
