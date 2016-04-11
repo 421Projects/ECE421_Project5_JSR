@@ -49,6 +49,7 @@ class HostGame
             sleep(1)
             counter += 1
             if counter > 60
+                puts "Client taking too long. Exiting..."
                 exit(0)
             end
         end
