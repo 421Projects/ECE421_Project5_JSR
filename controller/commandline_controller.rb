@@ -575,12 +575,8 @@ class CMDController
                         raise ModeNotSupported,"#{commands[1]} mode not supported."
                     end
                 elsif commands[0].downcase.include? "host"
-                    # commands[1] = "Connect4"
-                    # given_host = commands[2]
-                    # given_port = Integer(commands[3]) rescue nil
-                    given_host = "127.0.0.1"
-                    given_port = 50525
-                    commands[1] = "Connect4"
+                    given_host = commands[2]
+                    given_port = Integer(commands[3]) rescue nil
                     begin
                         gameClazz = Object.const_get(commands[1]) # Game
                     rescue NameError => ne
@@ -598,12 +594,8 @@ class CMDController
                         raise ModeNotSupported,"#{commands[1]} mode not supported."
                     end
                 elsif commands[0].downcase.include? "join"
-                    # commands[1] = "Connect4"
-                    # given_host = commands[2]
-                    # given_port = Integer(commands[3]) rescue nil
-                    given_host = "127.0.0.1"
-                    given_port = 50525
-                    commands[1] = "Connect4"
+                    given_host = commands[2]
+                    given_port = Integer(commands[3]) rescue nil
                     begin
                         gameClazz = Object.const_get(commands[1]) # Game
                     rescue StandardError

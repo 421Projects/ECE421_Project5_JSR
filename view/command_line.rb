@@ -118,12 +118,14 @@ class CommandLineView
             return
         elsif user_input[0].downcase.include? "help"
             puts "help: list these help options\n" +
-                 "new: start new game. Ex. new <mode name>\n " +
+                 "new: start new game. Ex. new <mode name>\n" +
                  "restart: restart game \n" +
-                 "modes: list modes\n"
+                 "modes: list modes\n" + 
+                 "host: host a new game. Ex. host <mode name> <ip> <port> \n" +
+                 "join: join a hosted game. Ex. join <mode name> <ip> <port>\n"
         elsif user_input[0].downcase.include? "mode"
             puts "Mode files loaded are:"
-            puts CMDController.instance.get_mode_files_loaded
+            puts CMDController.instance.modes_loaded
         elsif user_input[0].downcase.include? "exit" or
              user_input[0].downcase.include? "quit"
             @running = false
