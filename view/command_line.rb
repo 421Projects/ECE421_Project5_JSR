@@ -120,7 +120,7 @@ class CommandLineView
             puts "help: list these help options\n" +
                  "new: start new game. Ex. new <mode name>\n" +
                  "restart: restart game \n" +
-                 "modes: list modes\n" + 
+                 "modes: list modes\n" +
                  "host: host a new game. Ex. host <mode name> <ip> <port> \n" +
                  "join: join a hosted game. Ex. join <mode name> <ip> <port>\n"
         elsif user_input[0].downcase.include? "mode"
@@ -142,37 +142,37 @@ class CommandLineView
                 puts "how many AIs? (maximum of 2 supported)"
                 user_input << gets.chomp
             end
-            #            begin
-            if (user_input[0].downcase.include? "join")
-                t = Thread.new {
+            begin
+                if (user_input[0].downcase.include? "join")
+                    t = Thread.new {
+                        CMDController.instance.handle_event(user_input)
+                    }
+                    puts "Waiting for game to start"
+                    until t.join(0.10) do
+                        print "."
+                        sleep(0.2)
+                        print "."
+                        sleep(0.2)
+                        print "."
+                        sleep(0.2)
+                        print "\r   \r"
+                    end
+                    STDOUT.flush
+                else
                     CMDController.instance.handle_event(user_input)
-                }
-                puts "Waiting for game to start"
-                until t.join(0.10) do
-                    print "."
-                    sleep(0.2)
-                    print "."
-                    sleep(0.2)
-                    print "."
-                    sleep(0.2)
-                    print "\r   \r"
                 end
-                STDOUT.flush
-            else
-                CMDController.instance.handle_event(user_input)
+            rescue StandardError => se
+                puts se.message
+                puts "Do you want try again? (y/n)"
+                response = gets.chomp.split
+                if response[0].downcase.include? "y"
+                    puts "Trying again..."
+                    return
+                else
+                    puts "Quiting..."
+                    @running = false
+                end
             end
-            # rescue StandardError => se
-            #     puts se.message
-            #     puts "Do you want try again? (y/n)"
-            #     response = gets.chomp.split
-            #     if response[0].downcase.include? "y"
-            #         puts "Trying again..."
-            #         return
-            #     else
-            #         puts "Quiting..."
-            #         @running = false
-            #     end
-            # end
         end
         nil
     end

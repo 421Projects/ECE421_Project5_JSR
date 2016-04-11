@@ -329,7 +329,7 @@ class CMDController
                 end
             end
             if @board == nil
-                puts "nothing found or you sayd no"
+                # puts "nothing found or you sayd no"
                 @board = Board.new(@game.board_width, @game.board_height)
                 @clients_board = Board.new(@game.board_width, @game.board_height)
                 first_players_index = 1 # rand(0..(@players.size-1))
