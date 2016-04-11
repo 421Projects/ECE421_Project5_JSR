@@ -5,7 +5,7 @@ class RemoteRealPlayer < RemotePlayer
     def play(board_to_play)
         move = get_move
         @last_column_played = move
-        if @last_column_played != -2
+        if @last_column_played != -2 and @last_column_played != -3
             board_to_play.set_piece(move, self.piece)
         end
         nil

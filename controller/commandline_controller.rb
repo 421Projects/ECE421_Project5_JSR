@@ -353,7 +353,7 @@ class CMDController
             @player_playing.play(@board)
         else
             @player_playing.last_column_played = arg
-            if arg != -2
+            if arg != -2 and arg != -3
                 @board.set_piece(arg, @player_playing.piece)
             end
             if @online_mode
@@ -367,6 +367,10 @@ class CMDController
 
         puts "arg is #{arg}"
         puts "last_column played = #{@player_playing.last_column_played}"
+        if @player_playing.is_a? RemoteRealPlayer and
+           @player_playing.last_column_played == -2
+            puts "Partner wishes to save game. Type in -2 to save or -3 to reject."
+        end
         if @board.analyze(@player_playing.pattern_array)
             # game over, no need to switch turns
             @player_playing.set_win_status(true)
@@ -507,7 +511,7 @@ class CMDController
                             puts "calcing for host"
                             for turn in start_turn..(start_turn+@game.num_of_players-1)
                                 puts "savers #{CMDController.instance.save_requests_received}"
-                                if CMDController.instance.game_history[turn] >= 0
+                                if CMDController.instance.game_history[turn] >= -3
                                     puts "found objector"
                                     ret_val = -11
                                 end

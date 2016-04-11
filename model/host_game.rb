@@ -95,7 +95,7 @@ class HostGame
             puts "calcing for client"
             for turn in start_turn..(start_turn+@game.num_of_players-1)
                 puts "savers #{CMDController.instance.save_requests_received}"
-                if CMDController.instance.game_history[turn] >= 0
+                if CMDController.instance.game_history[turn] == -3
                     puts "found objector"
                     ret_val = -11
                 end
